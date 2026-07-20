@@ -307,10 +307,8 @@ export default function DocsPage() {
 
         <Section title="Kenapa Pakai Pendekatan Basel?">
           <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "#3A4553", marginBottom: 14 }}>
-            Formula sebelumnya (kombinasi linear faktor likuiditas, CRI, dan skor Legal)
-            terlihat proporsional tapi tidak berbasis prinsip apa pun, sehingga sulit
-            dipertanggungjawabkan kalau ditanya "kenapa koefisiennya segini?". Pendekatan
-            Basel dipilih karena empat alasan konkret:
+            Recovery Probability dihitung dengan pendekatan yang mendekati Basel untuk LGD
+            (Loss Given Default), karena empat alasan konkret:
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13, lineHeight: 1.7, color: "#3A4553" }}>
@@ -334,16 +332,15 @@ export default function DocsPage() {
             </div>
             <div>
               <b style={{ color: NAVY }}>3. Konsisten dengan proposal COLARIS itu sendiri.</b>{" "}
-              Bagian kepatuhan proposal sudah menyebut "prinsip Basel Committee mengenai
-              manajemen risiko kredit". Kalau perhitungan Recovery Probability tetap memakai
-              formula bebas, klaim itu jadi tidak tercermin di implementasinya. Sekarang
-              perhitungannya benar-benar merefleksikan prinsip yang disebut.
+              Bagian kepatuhan proposal menyebut "prinsip Basel Committee mengenai manajemen
+              risiko kredit", dan perhitungan Recovery Probability dirancang agar benar-benar
+              merefleksikan prinsip tersebut, bukan sekadar disebut di narasi kepatuhan.
             </div>
             <div>
               <b style={{ color: NAVY }}>4. Lebih mudah diaudit dan dipertahankan.</b>{" "}
               Setiap angka pada formula punya rujukan konseptual yang bisa dijelaskan ke
-              pihak manajemen risiko atau regulator, dibanding koefisien yang dipilih karena
-              "kelihatan proporsional".
+              pihak manajemen risiko atau regulator, karena mengikuti struktur haircut yang
+              sudah dikenal dalam praktik perbankan.
             </div>
           </div>
 

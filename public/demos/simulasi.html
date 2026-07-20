@@ -427,7 +427,12 @@ function computeAdjusted(a){
   const avg = (s.Market+s.Legal+s.Geo+s.Climate+s.Economic)/5;
   const cri = Math.max(2,Math.min(98,Math.round(100-avg)));
   const ltv = a.plafon / npw * 100;
-  const rec = Math.max(15,Math.min(97,Math.round(a.liq*100 - cri*0.45 + (s.Legal-70)*0.25)));
+  // Recovery Probability, approximated with a Basel-style LGD haircut model:
+  // haircut = (collateral-type base haircut) + (legal-certainty addon) + (risk-volatility addon)
+  const haircutBase = (1 - a.liq) * 100;
+  const legalAddon = (100 - s.Legal) * 0.25;
+  const riskAddon = cri * 0.35;
+  const rec = Math.max(15,Math.min(97,Math.round(100 - (haircutBase + legalAddon + riskAddon))));
   const growth = (s.Market-65)/8 + scen.prop*0.35 + scen.infra*2.2 - scen.rate/100 - scen.flood*1.5;
   const pnpw = npw * (1 + growth/100);
   return { s, npw, nl, cri, ltv, rec, pnpw };
@@ -765,7 +770,7 @@ async function liveGeocode(){
 document.getElementById("liveGeoBtn").addEventListener("click", liveGeocode);
 document.getElementById("liveAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") liveGeocode(); });
 
-const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", fire:"Fire Hotspot Engine (NASA FIRMS)", agri:"Agro Climatology (NASA POWER)", osm:"Geo & Market Engine"};
+const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", media:"Media Intelligence (GDELT)", fire:"Fire Hotspot Engine (NASA FIRMS)", agri:"Agro Climatology (NASA POWER)", osm:"Geo & Market Engine"};
 function liveRenderSteps(state){
   const box=document.getElementById("liveSteps");
   box.innerHTML = Object.keys(LIVE_STEP_LABELS).map(k=>{
@@ -786,7 +791,7 @@ document.getElementById("liveRunBtn").addEventListener("click", async ()=>{
   try{
     const R = await ColarisLiveEngine.fetchLiveSignals(liveSelectedLoc.lat, liveSelectedLoc.lon, (k,s,n)=>{
       stepState[k]={state:s, note:n}; liveRenderSteps(stepState);
-    });
+    }, liveSelectedLoc.label.split(",")[0].trim());
     const certScore = parseInt(document.getElementById("liveCert").value);
     const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
     const [icon,shortName,typeLabel] = document.getElementById("liveType").value.split("|");

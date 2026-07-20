@@ -203,6 +203,11 @@ footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:v
       <div class="quakelist" id="quakeList"></div>
       <div id="bmkgQuakeSection" style="margin-top:12px"></div>
     </div>
+
+    <div class="card" style="margin-top:14px" id="mediaCard">
+      <h3>Media Intelligence (GDELT, 30 hari terakhir)</h3>
+      <div class="quakelist" id="mediaList"></div>
+    </div>
   </div>
 
   <div id="placeholder" class="card ph-box">
@@ -326,6 +331,27 @@ async function fetchAgroClimatology(lat,lon){
   return { solarRad: p?ann(p.ALLSKY_SFC_SW_DWN):null, temp: p?ann(p.T2M):null, humidity: p?ann(p.RH2M):null, wind: p?ann(p.WS2M):null };
 }
 
+// GDELT Project: recent news volume and average tone/sentiment for a place name. No API key.
+// Tone is GDELT's own linguistic scoring (roughly -10 very negative to +10 very positive),
+// not an LLM summary.
+async function fetchMediaSentiment(placeName){
+  const q=encodeURIComponent(`"${placeName}"`);
+  const [artData,toneData]=await Promise.all([
+    fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=10&timespan=30d&format=json&sort=hybridrel`,{},15000),
+    fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinetone&timespan=30d&format=json`,{},15000),
+  ]);
+  const articles=(artData&&artData.articles)||[];
+  let avgTone=null;
+  try{
+    const series=toneData&&toneData.timeline&&toneData.timeline[0]&&toneData.timeline[0].data;
+    if(series&&series.length){
+      const vals=series.map(d=>d.value).filter(v=>typeof v==="number");
+      if(vals.length) avgTone=vals.reduce((a,b)=>a+b,0)/vals.length;
+    }
+  }catch(e){}
+  return { articleCount:articles.length, avgTone, topArticles:articles.slice(0,5).map(a=>({title:a.title,domain:a.domain,date:a.seendate})) };
+}
+
 /* ================= geocoding ================= */
 let selectedLoc=null;
 const SAMPLES=["Kelapa Gading, Jakarta Utara","Semarang Utara","Dago, Bandung","Pluit, Jakarta Utara","Denpasar Selatan"];
@@ -369,6 +395,7 @@ const STEPS=[
   ["quake","Seismic Engine · USGS 10 tahun"],
   ["bmkg","Seismic Engine · BMKG (Indonesia)"],
   ["econ","Economic Engine · World Bank (PDB & inflasi)"],
+  ["media","Media Intelligence Engine · GDELT"],
   ["fire","Fire Hotspot Engine · NASA FIRMS"],
   ["agri","Agro Climatology Engine · NASA POWER"],
   ["osm","Geo & Market Engine · Overpass/OSM"],
@@ -405,7 +432,8 @@ async function runAnalysis(){
            fireCount:null,fireConfigured:false,
            pm25:null,pm10:null,aqi:null,
            solarRad:null,agroTemp:null,humidity:null,wind:null,
-           schools:null,healthcare:null,transit:null,powerInfra:null};
+           schools:null,healthcare:null,transit:null,powerInfra:null,
+           mediaArticles:null,mediaTone:null,mediaTop:[]};
 
   /* Elevation */
   setStep("elev","loading");
@@ -475,6 +503,17 @@ async function runAnalysis(){
     R.inflation=econ.inflation; R.inflationYear=econ.inflationYear;
     setStep("econ","done",`Economic Engine · PDB ${econ.gdpGrowth!=null?econ.gdpGrowth.toFixed(1)+"%":"n/a"} (${econ.gdpYear}), inflasi ${econ.inflation!=null?econ.inflation.toFixed(1)+"%":"n/a"} (${econ.inflationYear})`);
   }catch(e){ setStep("econ","fail","Economic Engine · gagal ("+e.message+")"); }
+
+  /* GDELT: media sentiment for the place name */
+  setStep("media","loading");
+  try{
+    const placeName=selectedLoc.name.split(",")[0].trim();
+    const media=await fetchMediaSentiment(placeName);
+    R.mediaArticles=media.articleCount; R.mediaTone=media.avgTone; R.mediaTop=media.topArticles;
+    setStep("media","done", media.articleCount===0
+      ? `Media Intelligence · tidak ada artikel untuk "${placeName}" dalam 30 hari (GDELT)`
+      : `Media Intelligence · ${media.articleCount} artikel, tone rata-rata ${media.avgTone!=null?media.avgTone.toFixed(2):"n/a"} (GDELT, 30 hari)`);
+  }catch(e){ setStep("media","fail","Media Intelligence Engine · gagal ("+e.message+")"); }
 
   /* NASA FIRMS: active fire hotspots */
   setStep("fire","loading");
@@ -581,7 +620,12 @@ function computeAndRender(R){
   /* Market/liquidity proxy */
   let market=65;
   if(R.shops!=null){ if(R.shops>=60)market=90; else if(R.shops>=25)market=82; else if(R.shops>=8)market=72; else {market=58;reasons.push({s:"Market",t:`Hanya ${R.shops} titik komersial dalam 1 km (OSM): likuiditas pasar lokal terbatas`,hi:0});} }
-  market=Math.round(market);
+  if(R.mediaTone!=null){
+    if(R.mediaTone<-3){market-=10;reasons.push({s:"Market",t:`Sentimen media kawasan negatif (GDELT, tone rata-rata ${fmt(R.mediaTone)}, ${R.mediaArticles} artikel/30 hari)`,hi:0});}
+    else if(R.mediaTone<-1){market-=5;}
+    else if(R.mediaTone>3){market=Math.min(96,market+5);reasons.push({s:"Market",t:`Sentimen media kawasan positif (GDELT, tone rata-rata ${fmt(R.mediaTone)})`,hi:0});}
+  }
+  market=Math.max(15,Math.min(96,Math.round(market)));
 
   /* NASA POWER: informative, most relevant for Lahan/perkebunan */
   if(R.solarRad!=null && R.solarRad<4){
@@ -610,7 +654,12 @@ function computeAndRender(R){
   const ltv=plafon/nilai*100;
   const maxLtv=Math.max(40,Math.round(80-cri*0.4));
   const nl=nilai*liq*(1-cri/400);
-  const rec=Math.max(15,Math.min(97,Math.round(liq*100-cri*.45+(legal-70)*.25)));
+  // Recovery Probability, approximated with a Basel-style LGD haircut model:
+  // haircut = (collateral-type base haircut) + (legal-certainty addon) + (risk-volatility addon)
+  const haircutBase=(1-liq)*100;
+  const legalAddon=(100-legal)*0.25;
+  const riskAddon=cri*0.35;
+  const rec=Math.max(15,Math.min(97,Math.round(100-(haircutBase+legalAddon+riskAddon))));
 
   if(ltv>maxLtv) reasons.unshift({s:"LTV",t:`LTV aktual ${fmt(ltv)}% melebihi LTV maksimal yang disarankan ${maxLtv}% untuk profil risiko ini`,hi:1});
   if(cri>=50) reasons.unshift({s:"CRI",t:`Collateral Risk Index ${cri} melewati ambang 50: masukkan ke watchlist & appraisal lapangan`,hi:1});
@@ -668,6 +717,7 @@ function renderResults(R,scores,cri,fin,reasons){
     ["Sekolah & Faskes",(R.schools==null&&R.healthcare==null)?"n/a":(R.schools||0)+" sekolah, "+(R.healthcare||0)+" faskes","Overpass/OSM",false],
     ["Transit",R.transit==null?"n/a":R.transit+" halte/stasiun","Overpass/OSM",false],
     ["Jalan utama",R.roads==null?"n/a":R.roads+" ruas /600 m","Overpass/OSM",false],
+    ["Sentimen Media (30 hari)",R.mediaTone==null?(R.mediaArticles===0?"tidak ada artikel":"n/a"):fmt(R.mediaTone)+" ("+R.mediaArticles+" artikel)","GDELT",R.mediaTone!=null&&R.mediaTone<-3],
   ];
   $("facts").innerHTML=facts.map(([l,v,d,warn])=>
     `<div class="fact ${warn?"warn":""}"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
@@ -722,6 +772,23 @@ function renderResults(R,scores,cri,fin,reasons){
         `<div><b>M${q.mag.toFixed(1)}</b> · ${q.place} · ${q.date} ${q.jam||""} · ${fmt(q.dist)} km</div>`).join("");
   } else {
     bmkgSec.innerHTML="";
+  }
+
+  /* media */
+  if(R.mediaTone!=null || R.mediaArticles!=null){
+    $("mediaCard").classList.remove("hidden");
+    const toneLabel = R.mediaTone==null?"":R.mediaTone<-1?" (negatif)":R.mediaTone>1?" (positif)":" (netral)";
+    if(R.mediaArticles===0){
+      $("mediaList").innerHTML=`Tidak ada artikel ditemukan dalam 30 hari terakhir (GDELT).`;
+    } else if(R.mediaTop && R.mediaTop.length){
+      $("mediaList").innerHTML=
+        `<div style="margin-bottom:8px">Tone rata-rata: <b>${fmt(R.mediaTone)}</b>${toneLabel} dari ${R.mediaArticles} artikel</div>`+
+        R.mediaTop.map(a=>`<div>${a.title} · <span style="color:var(--muted-2)">${a.domain}</span></div>`).join("");
+    } else {
+      $("mediaList").innerHTML="Data GDELT tidak lengkap untuk lokasi ini.";
+    }
+  } else {
+    $("mediaCard").classList.add("hidden");
   }
 }
 </script>

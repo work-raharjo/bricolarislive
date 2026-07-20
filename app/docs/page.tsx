@@ -64,6 +64,13 @@ const SOURCES = [
     key: "Tidak perlu",
   },
   {
+    engine: "Media Intelligence Engine",
+    provider: "GDELT Project",
+    url: "https://www.gdeltproject.org",
+    data: "Jumlah artikel berita dan skor tone/sentimen linguistik rata-rata untuk nama lokasi dalam 30 hari terakhir.",
+    key: "Tidak perlu",
+  },
+  {
     engine: "Economic Engine",
     provider: "World Bank Open Data",
     url: "https://data.worldbank.org",
@@ -153,7 +160,7 @@ export default function DocsPage() {
               koordinat lintang/bujur lewat OpenStreetMap Nominatim.
             </li>
             <li>
-              <b style={{ color: NAVY }}>Fan-out ke 10 engine</b> secara paralel/berurutan, masing-masing
+              <b style={{ color: NAVY }}>Fan-out ke 11 engine</b> secara paralel/berurutan, masing-masing
               memanggil satu API publik dengan koordinat tersebut sebagai parameter.
             </li>
             <li>
@@ -215,7 +222,9 @@ export default function DocsPage() {
         <Section title="Cara Menghitung Recovery Probability">
           <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "#3A4553", marginBottom: 16 }}>
             Recovery Probability adalah estimasi peluang bank memulihkan nilai kredit dari
-            agunan seandainya terjadi gagal bayar. Dihitung dari tiga komponen:
+            agunan seandainya terjadi gagal bayar. Modelnya mendekati pendekatan Basel untuk
+            LGD (Loss Given Default): nilai agunan dikurangi serangkaian <i>haircut</i>
+            (potongan), bukan dihitung langsung sebagai persentase tetap.
           </p>
 
           <div
@@ -231,35 +240,36 @@ export default function DocsPage() {
               overflowX: "auto",
             }}
           >
-            Recovery Probability = clamp( 15%, 97%,{" "}
+            Haircut Total = (1 {"-"} Faktor Likuiditas) x 100
             <br />
-            &nbsp;&nbsp;(Faktor Likuiditas x 100)
+            &nbsp;&nbsp;{"+"} ((100 {"-"} Skor Legal) x 0,25)
             <br />
-            &nbsp;&nbsp;{"-"} (Collateral Risk Index x 0,45)
+            &nbsp;&nbsp;{"+"} (Collateral Risk Index x 0,35)
             <br />
-            &nbsp;&nbsp;{"+"} ((Skor Legal {"-"} 70) x 0,25)
             <br />
-            )
+            Recovery Probability = clamp( 15%, 97%, 100 {"-"} Haircut Total )
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, lineHeight: 1.7, color: "#3A4553" }}>
             <div>
-              <b style={{ color: NAVY }}>Faktor Likuiditas</b>, seberapa cepat jenis agunan
-              biasanya bisa dijual: Rumah Tinggal 80%, Ruko/Komersial 78%, Gudang/Industri 72%,
-              Lahan 60%. Ini titik awal (base) sebelum penyesuaian risiko.
+              <b style={{ color: NAVY }}>Haircut dasar jenis agunan</b>, diturunkan dari Faktor
+              Likuiditas per tipe kolateral: Rumah Tinggal (likuiditas 80%, haircut dasar 20%),
+              Ruko/Komersial (78%, haircut 22%), Gudang/Industri (72%, haircut 28%), Lahan (60%,
+              haircut 40%). Ini meniru tabel haircut Basel untuk kategori kolateral berbeda:
+              aset yang lebih likuid dan mudah dijual dapat haircut lebih kecil.
             </div>
             <div>
-              <b style={{ color: NAVY }}>Collateral Risk Index (CRI)</b>, skor gabungan dari
-              seluruh engine (0 sampai 100, makin tinggi makin berisiko). Setiap 1 poin kenaikan
-              CRI menurunkan Recovery Probability sebesar 0,45 poin, jadi CRI yang tinggi
-              (misalnya karena elevasi rendah, gempa, atau kualitas udara buruk) langsung
-              mengurangi ekspektasi pemulihan.
+              <b style={{ color: NAVY }}>Tambahan haircut dari kepastian hukum</b>, Basel
+              mensyaratkan kepastian hukum (legal certainty) agar kolateral bisa diakui penuh.
+              Skor Legal di bawah 100 (SHM 95, SHGB 85, HGU/Hak Pakai 72, AJB/Girik 45) menambah
+              haircut secara proporsional, karena eksekusi jaminan tanpa SHM/SHGB penuh risiko
+              dan biaya lebih tinggi.
             </div>
             <div>
-              <b style={{ color: NAVY }}>Skor Legal</b>, dari jenis sertifikat (SHM 95, SHGB 85,
-              HGU/Hak Pakai 72, AJB/Girik 45). Angka 70 dipakai sebagai titik netral, jadi
-              sertifikat di atas SHGB sedikit menambah Recovery Probability, dan di bawahnya
-              sedikit mengurangi karena proses eksekusi jaminan lebih rumit tanpa SHM/SHGB.
+              <b style={{ color: NAVY }}>Tambahan haircut dari risiko (CRI)</b>, Basel juga
+              mensyaratkan haircut menyesuaikan volatilitas nilai aset. Collateral Risk Index
+              (0 sampai 100, gabungan seluruh engine) dipakai sebagai proxy volatilitas: makin
+              tinggi CRI, makin besar tambahan haircut-nya.
             </div>
             <div>
               Hasil akhir dibatasi (di-<i>clamp</i>) antara 15% dan 97%, karena dalam praktiknya
@@ -279,17 +289,19 @@ export default function DocsPage() {
               lineHeight: 1.6,
             }}
           >
-            <b style={{ color: NAVY }}>Contoh:</b> Ruko (likuiditas 78%) dengan sertifikat SHM
-            (skor Legal 95) dan CRI 34 akan dihitung sebagai: (78) {"-"} (34 x 0,45) + ((95{" "}
-            {"-"}
-            70) x 0,25) = 78 {"-"} 15,3 + 6,25 = <b>69%</b>.
+            <b style={{ color: NAVY }}>Contoh:</b> Ruko (likuiditas 78%, haircut dasar 22%)
+            dengan sertifikat SHM (skor Legal 95) dan CRI 34 dihitung sebagai: Haircut Total ={" "}
+            22 {"+"} ((100 {"-"} 95) x 0,25) {"+"} (34 x 0,35) = 22 {"+"} 1,25 {"+"} 11,9 ={" "}
+            <b>35,15%</b>. Recovery Probability = 100 {"-"} 35,15 = <b>65%</b>.
           </div>
 
           <p style={{ fontSize: 12, color: MUTED, marginTop: 14, lineHeight: 1.6 }}>
-            Ini adalah model heuristik sederhana untuk keperluan demonstrasi, bukan model LGD
-            (Loss Given Default) formal Basel. Bank sungguhan memerlukan data historis recovery
-            rate aktual per jenis agunan dan wilayah untuk mengkalibrasi model yang defensible
-            secara regulasi.
+            Ini adalah pendekatan yang mendekati (approximate), bukan model LGD Basel yang
+            literal. Basel Committee memakai tabel haircut supervisor berbasis data historis
+            volatilitas harga per kelas aset, sementara di sini haircut jenis agunan
+            didekati secara manual dan CRI dipakai sebagai proxy volatilitas dinamis. Bank
+            sungguhan tetap memerlukan data historis recovery rate aktual untuk mengkalibrasi
+            model yang defensible secara regulasi.
           </p>
         </Section>
 

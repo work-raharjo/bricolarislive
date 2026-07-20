@@ -117,6 +117,31 @@
     };
   }
 
+  // GDELT Project (Global Database of Events, Language, and Tone): recent news volume and
+  // average tone/sentiment for a place name. No API key needed. Tone is GDELT's own linguistic
+  // scoring (roughly -10 very negative to +10 very positive), not an LLM summary.
+  async function fetchMediaSentiment(placeName) {
+    const q = encodeURIComponent(`"${placeName}"`);
+    const [artData, toneData] = await Promise.all([
+      fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=10&timespan=30d&format=json&sort=hybridrel`, {}, 15000),
+      fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinetone&timespan=30d&format=json`, {}, 15000),
+    ]);
+    const articles = (artData && artData.articles) || [];
+    let avgTone = null;
+    try {
+      const series = toneData && toneData.timeline && toneData.timeline[0] && toneData.timeline[0].data;
+      if (series && series.length) {
+        const vals = series.map(d => d.value).filter(v => typeof v === "number");
+        if (vals.length) avgTone = vals.reduce((a, b) => a + b, 0) / vals.length;
+      }
+    } catch (e) {}
+    return {
+      articleCount: articles.length,
+      avgTone,
+      topArticles: articles.slice(0, 5).map(a => ({ title: a.title, domain: a.domain, date: a.seendate })),
+    };
+  }
+
   // NASA FIRMS: active fire hotspots (VIIRS, last 3 days) in a ~30km box around the point.
   // Requires a free MAP_KEY (see constant above); reports "not configured" otherwise.
   async function fetchFireHotspots(lat, lon) {
@@ -133,7 +158,7 @@
 
   // Pulls all live signals for a coordinate. Never throws: each engine fails independently,
   // onStep(key, state, note) reports progress for UI, R fields stay null on failure.
-  async function fetchLiveSignals(lat, lon, onStep) {
+  async function fetchLiveSignals(lat, lon, onStep, placeName) {
     const step = (k, s, n) => { if (onStep) try { onStep(k, s, n); } catch (e) {} };
     const R = { elev: null, rain30: null, rain7f: null, discharge: null, dischargeRatio: null,
                 quakes: [], waterwayM: null, roads: null, shops: null,
@@ -141,7 +166,8 @@
                 bmkgQuakes: [], fireCount: null, fireConfigured: false,
                 pm25: null, pm10: null, aqi: null,
                 solarRad: null, agroTemp: null, humidity: null, wind: null,
-                schools: null, healthcare: null, transit: null, powerInfra: null };
+                schools: null, healthcare: null, transit: null, powerInfra: null,
+                mediaArticles: null, mediaTone: null, mediaTop: [] };
 
     step("elev", "loading");
     try {
@@ -201,6 +227,16 @@
       R.inflation = econ.inflation; R.inflationYear = econ.inflationYear;
       step("econ", "done", `PDB ${econ.gdpGrowth!=null?econ.gdpGrowth.toFixed(1)+"%":"n/a"} (${econ.gdpYear}), inflasi ${econ.inflation!=null?econ.inflation.toFixed(1)+"%":"n/a"} (${econ.inflationYear})`);
     } catch (e) { step("econ", "fail", "Economic Engine (World Bank) gagal"); }
+
+    step("media", "loading");
+    try {
+      if (!placeName) throw new Error("nama lokasi tidak tersedia");
+      const media = await fetchMediaSentiment(placeName);
+      R.mediaArticles = media.articleCount; R.mediaTone = media.avgTone; R.mediaTop = media.topArticles;
+      step("media", "done", media.articleCount === 0
+        ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)`
+        : `${media.articleCount} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)`);
+    } catch (e) { step("media", "fail", "Media Intelligence Engine (GDELT) gagal: " + e.message); }
 
     step("fire", "loading");
     try {
@@ -309,6 +345,12 @@
       else if (R.shops >= 8) market = 72;
       else { market = 58; reasons.push(`Hanya ${R.shops} titik komersial dalam 1 km (OSM)`); }
     }
+    if (R.mediaTone != null) {
+      if (R.mediaTone < -3) { market -= 10; reasons.push(`Sentimen media kawasan negatif (GDELT, tone rata-rata ${R.mediaTone.toFixed(1)})`); }
+      else if (R.mediaTone < -1) market -= 5;
+      else if (R.mediaTone > 3) market = Math.min(96, market + 5);
+    }
+    market = Math.max(15, Math.min(96, Math.round(market)));
 
     const econ = scoreEconomic(R.gdpGrowth, R.inflation);
     econ.notes.forEach(n => reasons.push(n));
@@ -333,6 +375,6 @@
   global.ColarisLiveEngine = {
     geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchText,
     fetchOverpass, fetchEconomicIndicators, fetchBMKGQuakes, fetchFireHotspots,
-    fetchAirQuality, fetchAgroClimatology,
+    fetchAirQuality, fetchAgroClimatology, fetchMediaSentiment,
   };
 })(window);

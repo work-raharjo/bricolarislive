@@ -447,7 +447,12 @@ function model(a){
   const avg=(s.Market+s.Legal+s.Geo+s.Climate+s.Economic)/5;
   const cri=Math.max(2,Math.min(98,Math.round(100-avg)));
   const ltv=a.plafon/npw*100;
-  const rec=Math.max(15,Math.min(97,Math.round(a.liq*100-cri*0.45+(s.Legal-70)*0.25)));
+  // Recovery Probability, approximated with a Basel-style LGD haircut model:
+  // haircut = (collateral-type base haircut) + (legal-certainty addon) + (risk-volatility addon)
+  const haircutBase=(1-a.liq)*100;
+  const legalAddon=(100-s.Legal)*0.25;
+  const riskAddon=cri*0.35;
+  const rec=Math.max(15,Math.min(97,Math.round(100-(haircutBase+legalAddon+riskAddon))));
   return {s,npw,nl,cri,ltv,rec};
 }
 const criBadge=c=> c<30?{cls:"b-ok",txt:"Sehat"}:c<50?{cls:"b-warn",txt:"Perlu Perhatian"}:{cls:"b-danger",txt:"Watchlist"};
@@ -715,7 +720,7 @@ async function addGeocode(){
 document.getElementById("addGeoBtn").addEventListener("click", addGeocode);
 document.getElementById("addAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") addGeocode(); });
 
-const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", fire:"Fire Hotspot (FIRMS)", agri:"Agro Climatology (POWER)", osm:"Geo & Market Engine"};
+const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", media:"Media (GDELT)", fire:"Fire Hotspot (FIRMS)", agri:"Agro Climatology (POWER)", osm:"Geo & Market Engine"};
 function addRenderSteps(state){
   const box=document.getElementById("addSteps");
   document.getElementById("addStepsCard").style.display="block";
@@ -737,7 +742,7 @@ document.getElementById("addRunBtn").addEventListener("click", async ()=>{
   try{
     const R = await ColarisLiveEngine.fetchLiveSignals(addSelectedLoc.lat, addSelectedLoc.lon, (k,s,n)=>{
       stepState[k]={state:s, note:n}; addRenderSteps(stepState);
-    });
+    }, addSelectedLoc.label.split(",")[0].trim());
     const certScore = parseInt(document.getElementById("addCert").value);
     const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
     const [icon,shortName,typeLabel] = document.getElementById("addType").value.split("|");

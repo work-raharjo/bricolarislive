@@ -332,12 +332,22 @@ async function fetchAgroClimatology(lat,lon){
 }
 
 // GDELT's DOC 2.0 API does not reliably send CORS headers for direct browser fetch, which
-// shows up as a generic "Load failed"/"Failed to fetch" error. Try a direct call first, then
-// fall back to a public CORS proxy that just relays the response with proper headers added.
+// shows up as a generic "Load failed"/"Failed to fetch" error. When this file runs inside
+// the Next.js app, a same-origin API route (/api/gdelt) proxies the request server-side,
+// where CORS doesn't apply at all. When running as a standalone HTML file (no server),
+// that route won't exist, so we fall back to a public CORS proxy chain as best effort.
+async function fetchGdeltEndpoint(mode,params){
+  const qs=new URLSearchParams(Object.assign({mode},params)).toString();
+  try{ return await fetchJson("/api/gdelt?"+qs,{},15000); }catch(e){}
+  const gdeltUrl="https://api.gdeltproject.org/api/v2/doc/doc?"+
+    new URLSearchParams(Object.assign({format:"json"},params,{mode})).toString();
+  return await fetchViaCorsProxy(gdeltUrl,15000);
+}
 const CORS_PROXIES=[
   (url)=>url,
-  (url)=>"https://corsproxy.io/?url="+encodeURIComponent(url),
   (url)=>"https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+  (url)=>"https://corsproxy.io/?url="+encodeURIComponent(url),
+  (url)=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
 ];
 async function fetchViaCorsProxy(url,timeoutMs){
   let lastErr=null;
@@ -353,13 +363,10 @@ async function fetchViaCorsProxy(url,timeoutMs){
 // not an LLM summary. Article list and tone timeline are fetched independently, so if one
 // fails the other can still return.
 async function fetchMediaSentiment(placeName){
-  const q=encodeURIComponent(`"${placeName}"`);
-  const artUrl=`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=10&timespan=30d&format=json&sort=hybridrel`;
-  const toneUrl=`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinetone&timespan=30d&format=json`;
-
+  const q=`"${placeName}"`;
   const [artResult,toneResult]=await Promise.allSettled([
-    fetchViaCorsProxy(artUrl,15000),
-    fetchViaCorsProxy(toneUrl,15000),
+    fetchGdeltEndpoint("artlist",{query:q,maxrecords:"10",timespan:"30d",sort:"hybridrel"}),
+    fetchGdeltEndpoint("timelinetone",{query:q,timespan:"30d"}),
   ]);
 
   if(artResult.status==="rejected" && toneResult.status==="rejected"){

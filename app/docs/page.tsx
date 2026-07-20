@@ -67,7 +67,7 @@ const SOURCES = [
     provider: "NASA FIRMS (VIIRS)",
     url: "https://firms.modaps.eosdis.nasa.gov/api/area/",
     data: "Titik api aktif 3 hari terakhir dalam radius ~15 km, relevan terutama untuk lahan/perkebunan.",
-    key: "Perlu MAP_KEY gratis (belum dikonfigurasi di demo ini)",
+    key: "Sudah dikonfigurasi",
   },
   {
     engine: "Geo & Market Engine",
@@ -184,7 +184,7 @@ export default function DocsPage() {
                         style={{
                           fontSize: 10.5,
                           fontWeight: "bold",
-                          color: s.key === "Tidak perlu" ? "#1B8A56" : ORANGE,
+                          color: s.key !== "Tidak perlu" && s.key !== "Sudah dikonfigurasi" ? ORANGE : "#1B8A56",
                         }}
                       >
                         {s.key}
@@ -213,12 +213,13 @@ export default function DocsPage() {
               per kecamatan.
             </li>
             <li>
-              <b style={{ color: NAVY }}>Fire Hotspot Engine</b> membutuhkan MAP_KEY gratis dari NASA
-              FIRMS yang belum dikonfigurasi pada demo publik ini (untuk mengaktifkan, daftar di{" "}
+              <b style={{ color: NAVY }}>Fire Hotspot Engine</b> sudah aktif memakai MAP_KEY gratis
+              dari{" "}
               <a href="https://firms.modaps.eosdis.nasa.gov/api/area/" target="_blank" rel="noreferrer" style={{ color: BLUE }}>
-                firms.modaps.eosdis.nasa.gov
-              </a>{" "}
-              lalu isi konstanta <code>FIRMS_MAP_KEY</code> di <code>live-engine.js</code>).
+                NASA FIRMS
+              </a>
+              . Cakupan tetap sebatas radius ~15 km dan 3 hari terakhir, paling relevan untuk
+              agunan berupa lahan/perkebunan.
             </li>
             <li>
               <b style={{ color: NAVY }}>Overpass API</b> (OpenStreetMap) adalah layanan publik gratis

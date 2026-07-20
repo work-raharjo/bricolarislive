@@ -7,7 +7,7 @@
   // Set your own free key from https://firms.modaps.eosdis.nasa.gov/api/area/ to enable the
   // Fire Hotspot Engine (NASA FIRMS). Left empty by default: the engine reports "not configured"
   // instead of failing, and every other engine keeps working normally.
-  const FIRMS_MAP_KEY = "";
+  const FIRMS_MAP_KEY = "5bae915cb040c14f14fb39e30486981f";
 
   function haversine(lat1, lon1, lat2, lon2) {
     const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;

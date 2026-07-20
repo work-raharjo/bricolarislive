@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BRI COLARIS Live · Real-Time Collateral Risk Analysis",
+  title: "BRI COLARIS · Real-Time Collateral Risk Analysis",
   description:
     "Analisis risiko agunan real-time menggunakan data publik: elevasi, curah hujan, debit sungai, gempa USGS, dan OpenStreetMap. EMBRIO 2026.",
 };

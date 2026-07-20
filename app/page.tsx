@@ -21,7 +21,7 @@ export default function Home() {
           <Image src="/bri-logo-white.png" alt="BRI" width={78} height={31} />
           <div style={{ width: 1, height: 22, background: "rgba(255,255,255,.25)" }} />
           <div style={{ lineHeight: 1.1 }}>
-            <b style={{ fontSize: 19, color: "#fff", letterSpacing: 0.5 }}>COLARIS LIVE</b>
+            <b style={{ fontSize: 19, color: "#fff", letterSpacing: 0.5 }}>COLARIS</b>
             <div style={{ fontSize: 10, color: "#BFD6EE", letterSpacing: 2 }}>
               REAL-DATA COLLATERAL RISK INTELLIGENCE
             </div>
@@ -51,7 +51,7 @@ export default function Home() {
           EMBRIO 2026 · PROPOSAL INOVASI
         </div>
         <h1 style={{ fontSize: 30, color: "#fff", margin: "10px 0 14px", lineHeight: 1.3 }}>
-          BRI COLARIS Live: dari dummy data ke data publik real-time
+          BRI COLARIS: dari dummy data ke data publik real-time
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "#A9BEDB", maxWidth: 680 }}>
           Tiga cara mencoba konsep Living Collateral Intelligence. Yang pertama menarik data

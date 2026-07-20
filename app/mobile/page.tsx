@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "BRI COLARIS Live · Mobile Demo",
+  title: "BRI COLARIS · Mobile Demo",
 };
 
 export default function MobilePage() {

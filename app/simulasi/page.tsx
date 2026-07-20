@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "BRI COLARIS Live · Simulasi Desktop",
+  title: "BRI COLARIS · Simulasi Desktop",
 };
 
 export default function SimulasiPage() {

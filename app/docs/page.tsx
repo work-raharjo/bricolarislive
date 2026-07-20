@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata = {
-  title: "BRI COLARIS Live · Dokumentasi",
+  title: "BRI COLARIS · Dokumentasi",
 };
 
 const NAVY = "#00305E";
@@ -134,7 +134,7 @@ export default function DocsPage() {
         <Image src="/bri-logo-white.png" alt="BRI" width={62} height={25} />
         <div style={{ width: 1, height: 20, background: "rgba(255,255,255,.28)" }} />
         <div style={{ lineHeight: 1.1 }}>
-          <b style={{ fontSize: 15 }}>COLARIS LIVE</b>
+          <b style={{ fontSize: 15 }}>COLARIS</b>
           <div style={{ fontSize: 9, color: "#BFD6EE", letterSpacing: 1.5 }}>DOKUMENTASI</div>
         </div>
       </header>
@@ -147,7 +147,7 @@ export default function DocsPage() {
           Dari mana data ini diambil, dan bagaimana aplikasi ini bekerja
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.7, color: "#3A4553", maxWidth: 720 }}>
-          BRI COLARIS Live berbeda dari kebanyakan demo AI karena tidak memakai dummy data
+          BRI COLARIS berbeda dari kebanyakan demo AI karena tidak memakai dummy data
           yang sudah disiapkan sebelumnya. Setiap kali analisis dijalankan, aplikasi menarik
           data nyata dari sejumlah sumber publik saat itu juga, langsung dari browser pengguna,
           tanpa server backend dan tanpa database.

@@ -1,4 +1,4 @@
-# BRI COLARIS Live
+# BRI COLARIS
 
 Real-time collateral risk analysis demos for BRI's EMBRIO 2026 innovation proposal (COLARIS: Collateral Risk Intelligence System).
 

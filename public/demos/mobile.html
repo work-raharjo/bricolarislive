@@ -715,7 +715,7 @@ async function addGeocode(){
 document.getElementById("addGeoBtn").addEventListener("click", addGeocode);
 document.getElementById("addAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") addGeocode(); });
 
-const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", fire:"Fire Hotspot (FIRMS)", osm:"Geo & Market Engine"};
+const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", fire:"Fire Hotspot (FIRMS)", agri:"Agro Climatology (POWER)", osm:"Geo & Market Engine"};
 function addRenderSteps(state){
   const box=document.getElementById("addSteps");
   document.getElementById("addStepsCard").style.display="block";

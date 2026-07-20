@@ -765,7 +765,7 @@ async function liveGeocode(){
 document.getElementById("liveGeoBtn").addEventListener("click", liveGeocode);
 document.getElementById("liveAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") liveGeocode(); });
 
-const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", fire:"Fire Hotspot Engine (NASA FIRMS)", osm:"Geo & Market Engine"};
+const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", fire:"Fire Hotspot Engine (NASA FIRMS)", agri:"Agro Climatology (NASA POWER)", osm:"Geo & Market Engine"};
 function liveRenderSteps(state){
   const box=document.getElementById("liveSteps");
   box.innerHTML = Object.keys(LIVE_STEP_LABELS).map(k=>{

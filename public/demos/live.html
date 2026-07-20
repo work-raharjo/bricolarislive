@@ -310,6 +310,22 @@ async function fetchFireHotspots(lat,lon){
   return {configured:true, count: lines.slice(1).length};
 }
 
+// Open-Meteo Air Quality: PM2.5, PM10, US AQI. Same provider as weather, no separate key.
+async function fetchAirQuality(lat,lon){
+  const d=await fetchJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,pm10,us_aqi`);
+  const c=d && d.current;
+  return {pm25:c?c.pm2_5:null, pm10:c?c.pm10:null, aqi:c?c.us_aqi:null};
+}
+
+// NASA POWER climatology (multi-year averages, no date range, no key). Agro-viability proxy,
+// most relevant for Lahan/perkebunan collateral.
+async function fetchAgroClimatology(lat,lon){
+  const d=await fetchJson(`https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN,T2M,RH2M,WS2M&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`);
+  const p=d && d.properties && d.properties.parameter;
+  const ann=(o)=>(o && o.ANN!=null && o.ANN!==-999)?o.ANN:null;
+  return { solarRad: p?ann(p.ALLSKY_SFC_SW_DWN):null, temp: p?ann(p.T2M):null, humidity: p?ann(p.RH2M):null, wind: p?ann(p.WS2M):null };
+}
+
 /* ================= geocoding ================= */
 let selectedLoc=null;
 const SAMPLES=["Kelapa Gading, Jakarta Utara","Semarang Utara","Dago, Bandung","Pluit, Jakarta Utara","Denpasar Selatan"];
@@ -349,10 +365,12 @@ const STEPS=[
   ["elev","Elevation Engine · Open-Meteo"],
   ["rain","Climate Engine · curah hujan 30 hari + prakiraan"],
   ["flood","Flood Engine · debit sungai GloFAS"],
+  ["air","Air Quality Engine · Open-Meteo"],
   ["quake","Seismic Engine · USGS 10 tahun"],
   ["bmkg","Seismic Engine · BMKG (Indonesia)"],
   ["econ","Economic Engine · World Bank (PDB & inflasi)"],
   ["fire","Fire Hotspot Engine · NASA FIRMS"],
+  ["agri","Agro Climatology Engine · NASA POWER"],
   ["osm","Geo & Market Engine · Overpass/OSM"],
 ];
 function renderSteps(){
@@ -384,7 +402,10 @@ async function runAnalysis(){
   const R={elev:null,rain30:null,rainMax:null,rain7f:null,discharge:null,dischargeRatio:null,
            quakes:[],waterwayM:null,shops:null,roads:null,
            bmkgQuakes:[],gdpGrowth:null,gdpYear:null,inflation:null,inflationYear:null,
-           fireCount:null,fireConfigured:false};
+           fireCount:null,fireConfigured:false,
+           pm25:null,pm10:null,aqi:null,
+           solarRad:null,agroTemp:null,humidity:null,wind:null,
+           schools:null,healthcare:null,transit:null,powerInfra:null};
 
   /* Elevation */
   setStep("elev","loading");
@@ -421,6 +442,14 @@ async function runAnalysis(){
     }
   }catch(e){ setStep("flood","fail","Flood Engine · gagal ("+e.message+")"); }
 
+  /* Air Quality */
+  setStep("air","loading");
+  try{
+    const aq=await fetchAirQuality(lat,lon);
+    R.pm25=aq.pm25; R.pm10=aq.pm10; R.aqi=aq.aqi;
+    setStep("air","done",`Air Quality Engine · PM2.5 ${aq.pm25!=null?fmt(aq.pm25)+" ug/m3":"n/a"}, US AQI ${aq.aqi!=null?aq.aqi:"n/a"}`);
+  }catch(e){ setStep("air","fail","Air Quality Engine · gagal ("+e.message+")"); }
+
   /* Earthquakes */
   setStep("quake","loading");
   try{
@@ -456,21 +485,36 @@ async function runAnalysis(){
       fire.configured? `Fire Hotspot Engine · ${fire.count} titik api (3 hari, radius ~15km)` : "Fire Hotspot Engine · belum dikonfigurasi (perlu MAP_KEY gratis dari firms.modaps.eosdis.nasa.gov)");
   }catch(e){ setStep("fire","fail","Fire Hotspot Engine · gagal ("+e.message+")"); }
 
-  /* Overpass: waterways, roads, shops */
+  /* NASA POWER: agro climatology */
+  setStep("agri","loading");
+  try{
+    const agro=await fetchAgroClimatology(lat,lon);
+    R.solarRad=agro.solarRad; R.agroTemp=agro.temp; R.humidity=agro.humidity; R.wind=agro.wind;
+    setStep("agri","done",`Agro Climatology · radiasi surya ${agro.solarRad!=null?fmt(agro.solarRad)+" kWh/m2/hari":"n/a"}, suhu ${agro.temp!=null?fmt(agro.temp)+"C":"n/a"}`);
+  }catch(e){ setStep("agri","fail","Agro Climatology Engine · gagal ("+e.message+")"); }
+
+  /* Overpass: waterways, roads, shops, schools, healthcare, transit, power infra */
   setStep("osm","loading");
   try{
-    const q=`[out:json][timeout:20];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];);out center 400;`;
+    const q=`[out:json][timeout:20];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];node(around:1500,${lat},${lon})["amenity"~"school|university|college"];node(around:2000,${lat},${lon})["amenity"~"hospital|clinic|doctors"];node(around:800,${lat},${lon})["highway"~"bus_stop"];node(around:800,${lat},${lon})["railway"~"station|halt"];way(around:600,${lat},${lon})["power"~"substation|line|tower"];);out center 500;`;
     const d=await fetchOverpass(q, (url)=>setStep("osm","loading",`Geo & Market · mencoba ${new URL(url).hostname}...`));
-    let minW=null, roads=0, shops=0;
+    let minW=null, roads=0, shops=0, schools=0, healthcare=0, transit=0, powerInfra=0;
     (d.elements||[]).forEach(el=>{
-      if(el.tags && el.tags.waterway){
+      const t=el.tags||{};
+      if(t.waterway){
         const c=el.center||el;
         if(c.lat!=null){ const dist=haversine(lat,lon,c.lat,c.lon)*1000; if(minW==null||dist<minW) minW=dist; }
-      } else if(el.tags && el.tags.highway){ roads++; }
-      else if(el.tags && (el.tags.shop||el.tags.amenity)){ shops++; }
+      } else if(t.highway==="bus_stop"){ transit++; }
+      else if(t.railway){ transit++; }
+      else if(t.highway){ roads++; }
+      else if(t.amenity==="school"||t.amenity==="university"||t.amenity==="college"){ schools++; }
+      else if(t.amenity==="hospital"||t.amenity==="clinic"||t.amenity==="doctors"){ healthcare++; }
+      else if(t.power){ powerInfra++; }
+      else if(t.shop||t.amenity){ shops++; }
     });
     R.waterwayM=minW; R.roads=roads; R.shops=shops;
-    setStep("osm","done",`Geo & Market · sungai terdekat ${minW==null?"tidak ada <500 m":fmt(minW)+" m"}, ${roads} ruas jalan utama, ${shops} titik komersial/1 km`);
+    R.schools=schools; R.healthcare=healthcare; R.transit=transit; R.powerInfra=powerInfra;
+    setStep("osm","done",`Geo & Market · sungai terdekat ${minW==null?"tidak ada <500 m":fmt(minW)+" m"}, ${roads} jalan, ${shops} komersial, ${schools} sekolah, ${healthcare} faskes, ${transit} halte`);
   }catch(e){ setStep("osm","fail","Geo & Market Engine · semua mirror gagal/timeout ("+e.message+"), skor memakai nilai netral"); }
 
   computeAndRender(R);
@@ -521,16 +565,28 @@ function computeAndRender(R){
     if(R.fireCount>=5){climate=Math.max(5,climate-15);reasons.push({s:"Climate",t:`${R.fireCount} titik api terdeteksi NASA FIRMS dalam radius ~15km (3 hari terakhir)`,hi:1});}
     else if(R.fireCount>=1){climate=Math.max(5,climate-6);}
   }
+  if(R.aqi!=null){
+    if(R.aqi>150){climate=Math.max(5,climate-15);reasons.push({s:"Climate",t:`Kualitas udara US AQI ${R.aqi} (tidak sehat, Open-Meteo)`,hi:1});}
+    else if(R.aqi>100){climate=Math.max(5,climate-7);}
+  }
 
   /* Geo/access score */
   let geo=70;
   if(R.roads!=null){ if(R.roads>=8)geo=92; else if(R.roads>=3)geo=82; else if(R.roads>=1)geo=72; else {geo=55;reasons.push({s:"Geo",t:"Tidak ada jalan arteri/kolektor dalam 600 m (OSM): akses terbatas",hi:0});} }
+  const amenities=(R.schools||0)+(R.healthcare||0)+(R.transit||0);
+  if(amenities>=6) geo=Math.min(96,geo+8);
+  else if(amenities===0 && R.roads!=null){ geo=Math.max(40,geo-8); reasons.push({s:"Geo",t:"Tidak ada sekolah, faskes, atau halte transit dalam radius (OSM)",hi:0}); }
   geo=Math.round(geo);
 
   /* Market/liquidity proxy */
   let market=65;
   if(R.shops!=null){ if(R.shops>=60)market=90; else if(R.shops>=25)market=82; else if(R.shops>=8)market=72; else {market=58;reasons.push({s:"Market",t:`Hanya ${R.shops} titik komersial dalam 1 km (OSM): likuiditas pasar lokal terbatas`,hi:0});} }
   market=Math.round(market);
+
+  /* NASA POWER: informative, most relevant for Lahan/perkebunan */
+  if(R.solarRad!=null && R.solarRad<4){
+    reasons.push({s:"Climate",t:`Radiasi surya rata-rata ${fmt(R.solarRad)} kWh/m2/hari (NASA POWER): relevan untuk lahan/perkebunan, potensi hasil panen lebih rendah`,hi:0});
+  }
 
   /* Economic score: World Bank GDP growth + inflation (national indicator) */
   let economic=100;
@@ -603,10 +659,14 @@ function renderResults(R,scores,cri,fin,reasons){
     ["Prakiraan 7 hari",R.rain7f==null?"n/a":fmt(R.rain7f)+" mm","Open-Meteo",R.rain7f!=null&&R.rain7f>150],
     ["Sungai terdekat",R.waterwayM==null?"> 500 m":fmt(R.waterwayM)+" m","Overpass/OSM",R.waterwayM!=null&&R.waterwayM<150],
     ["Gempa M≥5 (10 thn)",R.quakes.length+" kejadian (USGS) / "+R.bmkgQuakes.length+" terkini (BMKG)","USGS + BMKG",R.quakes.filter(q=>q.mag>=6).length>0],
+    ["Kualitas Udara",R.aqi==null?"n/a":"US AQI "+R.aqi,"Open-Meteo",R.aqi!=null&&R.aqi>150],
     ["PDB Indonesia",R.gdpGrowth==null?"n/a":fmt(R.gdpGrowth)+"% ("+R.gdpYear+")","World Bank",R.gdpGrowth!=null&&R.gdpGrowth<2],
     ["Inflasi Indonesia",R.inflation==null?"n/a":fmt(R.inflation)+"% ("+R.inflationYear+")","World Bank",R.inflation!=null&&R.inflation>6],
     ["Titik api (3 hari)",!R.fireConfigured?"belum dikonfigurasi":R.fireCount+" titik","NASA FIRMS",R.fireConfigured&&R.fireCount>=5],
+    ["Radiasi Surya",R.solarRad==null?"n/a":fmt(R.solarRad)+" kWh/m2/hari","NASA POWER",R.solarRad!=null&&R.solarRad<4],
     ["Titik komersial",R.shops==null?"n/a":R.shops+" /1 km","Overpass/OSM",false],
+    ["Sekolah & Faskes",(R.schools==null&&R.healthcare==null)?"n/a":(R.schools||0)+" sekolah, "+(R.healthcare||0)+" faskes","Overpass/OSM",false],
+    ["Transit",R.transit==null?"n/a":R.transit+" halte/stasiun","Overpass/OSM",false],
     ["Jalan utama",R.roads==null?"n/a":R.roads+" ruas /600 m","Overpass/OSM",false],
   ];
   $("facts").innerHTML=facts.map(([l,v,d,warn])=>
@@ -627,7 +687,7 @@ function renderResults(R,scores,cri,fin,reasons){
   $("criBadge").innerHTML=`<span class="badge ${bc}">${bt}</span>`;
 
   const DESC={Market:"Densitas komersial 1 km (proxy likuiditas)",Legal:"Jenis sertifikat (input manual)",
-    Geo:"Akses jalan arteri/kolektor",Climate:"Elevasi + hujan + sungai + titik api (FIRMS)",Seismic:"Gempa historis USGS + BMKG",
+    Geo:"Akses jalan + sekolah/faskes/transit (OSM)",Climate:"Elevasi + hujan + sungai + kualitas udara + titik api",Seismic:"Gempa historis USGS + BMKG",
     Economic:"PDB & inflasi Indonesia (World Bank)"};
   $("scoreBars").innerHTML=keys.map(k=>
     `<div class="mb"><div class="bt"><b>${k}</b><span>${scores[k]}/100 · ${DESC[k]}</span></div>

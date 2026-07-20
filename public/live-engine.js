@@ -95,6 +95,28 @@
     }).filter(q => !isNaN(q.mag) && !isNaN(q.dist));
   }
 
+  // Open-Meteo Air Quality: PM2.5, PM10 and US AQI at the point. Same provider as weather,
+  // no separate key needed.
+  async function fetchAirQuality(lat, lon) {
+    const d = await fetchJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,pm10,us_aqi`);
+    const c = d && d.current;
+    return { pm25: c ? c.pm2_5 : null, pm10: c ? c.pm10 : null, aqi: c ? c.us_aqi : null };
+  }
+
+  // NASA POWER climatology (multi-year monthly/annual averages, no date range needed, no key).
+  // Used as an agricultural-viability proxy, most relevant for Lahan/perkebunan collateral.
+  async function fetchAgroClimatology(lat, lon) {
+    const d = await fetchJson(`https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN,T2M,RH2M,WS2M&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`);
+    const p = d && d.properties && d.properties.parameter;
+    const ann = (obj) => (obj && obj.ANN != null && obj.ANN !== -999) ? obj.ANN : null;
+    return {
+      solarRad: p ? ann(p.ALLSKY_SFC_SW_DWN) : null,
+      temp: p ? ann(p.T2M) : null,
+      humidity: p ? ann(p.RH2M) : null,
+      wind: p ? ann(p.WS2M) : null,
+    };
+  }
+
   // NASA FIRMS: active fire hotspots (VIIRS, last 3 days) in a ~30km box around the point.
   // Requires a free MAP_KEY (see constant above); reports "not configured" otherwise.
   async function fetchFireHotspots(lat, lon) {
@@ -116,7 +138,10 @@
     const R = { elev: null, rain30: null, rain7f: null, discharge: null, dischargeRatio: null,
                 quakes: [], waterwayM: null, roads: null, shops: null,
                 gdpGrowth: null, gdpYear: null, inflation: null, inflationYear: null,
-                bmkgQuakes: [], fireCount: null, fireConfigured: false };
+                bmkgQuakes: [], fireCount: null, fireConfigured: false,
+                pm25: null, pm10: null, aqi: null,
+                solarRad: null, agroTemp: null, humidity: null, wind: null,
+                schools: null, healthcare: null, transit: null, powerInfra: null };
 
     step("elev", "loading");
     try {
@@ -146,6 +171,13 @@
       }
       step("flood", "done", R.discharge == null ? "Tidak ada sungai GloFAS terdekat" : `Debit sungai ${(R.dischargeRatio*100).toFixed(0)}% dari puncak`);
     } catch (e) { step("flood", "fail", "Flood Engine gagal"); }
+
+    step("air", "loading");
+    try {
+      const aq = await fetchAirQuality(lat, lon);
+      R.pm25 = aq.pm25; R.pm10 = aq.pm10; R.aqi = aq.aqi;
+      step("air", "done", `PM2.5 ${aq.pm25 != null ? aq.pm25.toFixed(0) + " ug/m3" : "n/a"}, US AQI ${aq.aqi != null ? aq.aqi : "n/a"}`);
+    } catch (e) { step("air", "fail", "Air Quality Engine gagal"); }
 
     step("quake", "loading");
     try {
@@ -178,20 +210,34 @@
         fire.configured ? `${fire.count} titik api NASA FIRMS (3 hari, radius ~15km)` : "Fire Hotspot Engine: MAP_KEY belum dikonfigurasi");
     } catch (e) { step("fire", "fail", "Fire Hotspot Engine gagal: " + e.message); }
 
+    step("agri", "loading");
+    try {
+      const agro = await fetchAgroClimatology(lat, lon);
+      R.solarRad = agro.solarRad; R.agroTemp = agro.temp; R.humidity = agro.humidity; R.wind = agro.wind;
+      step("agri", "done", `Radiasi surya ${agro.solarRad!=null?agro.solarRad.toFixed(1)+" kWh/m2/hari":"n/a"}, suhu rata-rata ${agro.temp!=null?agro.temp.toFixed(1)+"C":"n/a"}`);
+    } catch (e) { step("agri", "fail", "Agro Climatology Engine (NASA POWER) gagal"); }
+
     step("osm", "loading");
     try {
-      const q = `[out:json][timeout:20];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];);out center 400;`;
+      const q = `[out:json][timeout:20];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];node(around:1500,${lat},${lon})["amenity"~"school|university|college"];node(around:2000,${lat},${lon})["amenity"~"hospital|clinic|doctors"];node(around:800,${lat},${lon})["highway"~"bus_stop"];node(around:800,${lat},${lon})["railway"~"station|halt"];way(around:600,${lat},${lon})["power"~"substation|line|tower"];);out center 500;`;
       const d = await fetchOverpass(q, (url) => step("osm", "loading", `Mencoba ${new URL(url).hostname}...`));
-      let minW = null, roads = 0, shops = 0;
+      let minW = null, roads = 0, shops = 0, schools = 0, healthcare = 0, transit = 0, powerInfra = 0;
       (d.elements || []).forEach(el => {
-        if (el.tags && el.tags.waterway) {
+        const t = el.tags || {};
+        if (t.waterway) {
           const c = el.center || el;
           if (c.lat != null) { const dist = haversine(lat, lon, c.lat, c.lon) * 1000; if (minW == null || dist < minW) minW = dist; }
-        } else if (el.tags && el.tags.highway) { roads++; }
-        else if (el.tags && (el.tags.shop || el.tags.amenity)) { shops++; }
+        } else if (t.highway === "bus_stop") { transit++; }
+        else if (t.railway) { transit++; }
+        else if (t.highway) { roads++; }
+        else if (t.amenity === "school" || t.amenity === "university" || t.amenity === "college") { schools++; }
+        else if (t.amenity === "hospital" || t.amenity === "clinic" || t.amenity === "doctors") { healthcare++; }
+        else if (t.power) { powerInfra++; }
+        else if (t.shop || t.amenity) { shops++; }
       });
       R.waterwayM = minW; R.roads = roads; R.shops = shops;
-      step("osm", "done", `${roads} jalan utama, ${shops} titik komersial/1km`);
+      R.schools = schools; R.healthcare = healthcare; R.transit = transit; R.powerInfra = powerInfra;
+      step("osm", "done", `${roads} jalan utama, ${shops} titik komersial, ${schools} sekolah, ${healthcare} faskes, ${transit} halte/1km`);
     } catch (e) { step("osm", "fail", "Geo & Market Engine gagal (semua mirror timeout/down), skor memakai nilai netral"); }
 
     return R;
@@ -242,6 +288,10 @@
       if (R.fireCount >= 5) { climate -= 12; reasons.push(`${R.fireCount} titik api terdeteksi NASA FIRMS dalam radius ~15km (3 hari terakhir)`); }
       else if (R.fireCount >= 1) climate -= 5;
     }
+    if (R.aqi != null) {
+      if (R.aqi > 150) { climate -= 15; reasons.push(`Kualitas udara US AQI ${R.aqi} (tidak sehat, Open-Meteo)`); }
+      else if (R.aqi > 100) climate -= 7;
+    }
     climate = Math.max(5, Math.round(climate));
 
     let geo = 70;
@@ -249,6 +299,9 @@
       if (R.roads >= 8) geo = 92; else if (R.roads >= 3) geo = 82; else if (R.roads >= 1) geo = 72;
       else { geo = 55; reasons.push("Tidak ada jalan arteri/kolektor dalam 600 m (OSM)"); }
     }
+    const amenities = (R.schools||0) + (R.healthcare||0) + (R.transit||0);
+    if (amenities >= 6) geo = Math.min(96, geo + 8);
+    else if (amenities === 0 && R.roads != null) { geo = Math.max(40, geo - 8); reasons.push("Tidak ada sekolah, faskes, atau halte transit dalam radius (OSM)"); }
 
     let market = 65;
     if (R.shops != null) {
@@ -259,6 +312,10 @@
 
     const econ = scoreEconomic(R.gdpGrowth, R.inflation);
     econ.notes.forEach(n => reasons.push(n));
+
+    if (R.solarRad != null && R.solarRad < 4) {
+      reasons.push(`Radiasi surya rata-rata ${R.solarRad.toFixed(1)} kWh/m2/hari (NASA POWER): relevan jika agunan berupa lahan/perkebunan, potensi hasil panen lebih rendah`);
+    }
 
     const floodProne = (R.elev != null && R.elev < 10) || (R.waterwayM != null && R.waterwayM < 400) || (R.dischargeRatio != null && R.dischargeRatio > 0.5);
 
@@ -276,5 +333,6 @@
   global.ColarisLiveEngine = {
     geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchText,
     fetchOverpass, fetchEconomicIndicators, fetchBMKGQuakes, fetchFireHotspots,
+    fetchAirQuality, fetchAgroClimatology,
   };
 })(window);

@@ -56,6 +56,13 @@ const SOURCES = [
     key: "Tidak perlu",
   },
   {
+    engine: "Air Quality Engine",
+    provider: "Open-Meteo Air Quality",
+    url: "https://open-meteo.com/en/docs/air-quality-api",
+    data: "PM2.5, PM10, dan US AQI di titik koordinat, sebagai sinyal lingkungan tambahan untuk skor Climate.",
+    key: "Tidak perlu",
+  },
+  {
     engine: "Economic Engine",
     provider: "World Bank Open Data",
     url: "https://data.worldbank.org",
@@ -70,10 +77,17 @@ const SOURCES = [
     key: "Sudah dikonfigurasi",
   },
   {
+    engine: "Agro Climatology Engine",
+    provider: "NASA POWER",
+    url: "https://power.larc.nasa.gov/docs/services/api/",
+    data: "Rata-rata jangka panjang radiasi surya, suhu, kelembapan, dan kecepatan angin, proxy viabilitas agrikultur untuk lahan/perkebunan.",
+    key: "Tidak perlu",
+  },
+  {
     engine: "Geo & Market Engine",
     provider: "Overpass API (OpenStreetMap)",
     url: "https://overpass-api.de",
-    data: "Jarak ke sungai/kanal terdekat, jumlah jalan arteri/kolektor, dan densitas titik komersial sebagai proxy likuiditas pasar.",
+    data: "Jarak ke sungai/kanal terdekat, jalan arteri/kolektor, sekolah, faskes, halte transit, infrastruktur listrik, dan densitas titik komersial sebagai proxy likuiditas pasar.",
     key: "Tidak perlu",
   },
 ];
@@ -138,7 +152,7 @@ export default function DocsPage() {
               koordinat lintang/bujur lewat OpenStreetMap Nominatim.
             </li>
             <li>
-              <b style={{ color: NAVY }}>Fan-out ke 8 engine</b> secara paralel/berurutan, masing-masing
+              <b style={{ color: NAVY }}>Fan-out ke 10 engine</b> secara paralel/berurutan, masing-masing
               memanggil satu API publik dengan koordinat tersebut sebagai parameter.
             </li>
             <li>

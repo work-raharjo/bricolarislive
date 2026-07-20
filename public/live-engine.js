@@ -18,6 +18,27 @@
       .finally(() => clearTimeout(t));
   }
 
+  // overpass-api.de (the default public instance) is frequently overloaded/rate-limited.
+  // Try a short list of known CORS-enabled mirrors in sequence before giving up.
+  const OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.osm.ch/api/interpreter",
+  ];
+  async function fetchOverpass(query, onAttempt) {
+    let lastErr = null;
+    for (const url of OVERPASS_MIRRORS) {
+      try {
+        if (onAttempt) onAttempt(url);
+        return await fetchJson(url, {
+          method: "POST", body: "data=" + encodeURIComponent(query),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        }, 15000);
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("Semua mirror Overpass gagal");
+  }
+
   async function geocodeSearch(query) {
     const data = await fetchJson(
       "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(query) +
@@ -76,11 +97,8 @@
 
     step("osm", "loading");
     try {
-      const q = `[out:json][timeout:25];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];);out center 400;`;
-      const d = await fetchJson("https://overpass-api.de/api/interpreter", {
-        method: "POST", body: "data=" + encodeURIComponent(q),
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
-      }, 25000);
+      const q = `[out:json][timeout:20];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];);out center 400;`;
+      const d = await fetchOverpass(q, (url) => step("osm", "loading", `Mencoba ${new URL(url).hostname}...`));
       let minW = null, roads = 0, shops = 0;
       (d.elements || []).forEach(el => {
         if (el.tags && el.tags.waterway) {
@@ -91,7 +109,7 @@
       });
       R.waterwayM = minW; R.roads = roads; R.shops = shops;
       step("osm", "done", `${roads} jalan utama, ${shops} titik komersial/1km`);
-    } catch (e) { step("osm", "fail", "Geo & Market Engine gagal/timeout"); }
+    } catch (e) { step("osm", "fail", "Geo & Market Engine gagal (semua mirror timeout/down), skor memakai nilai netral"); }
 
     return R;
   }
@@ -145,5 +163,5 @@
     };
   }
 
-  global.ColarisLiveEngine = { geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson };
+  global.ColarisLiveEngine = { geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchOverpass };
 })(window);

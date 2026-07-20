@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRI COLARIS · Simulasi Interaktif</title>
+<style>
+  :root{
+    --navy:#003A73; --blue:#0054A6; --blue-deep:#00294F;
+    --orange:#F37021; --orange-soft:#FEF0E6;
+    --ice:#F4F8FC; --ice-2:#EAF2FA; --line:#DCE5F0;
+    --ink:#1F2937; --muted:#6B7280; --muted-2:#9CA3AF;
+    --ok:#1E8E5A; --ok-bg:#E7F6EE;
+    --warn:#B7791F; --warn-bg:#FCF3E3;
+    --danger:#C0455C; --danger-bg:#FBEAEE;
+    --accent-blue:#BFD6EE;
+    --radius:10px;
+    --font:Arial, Helvetica, sans-serif;
+    --mono:"Courier New", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:var(--ice);color:var(--ink);font-size:14px}
+
+  /* ===== Header ===== */
+  header{
+    background:linear-gradient(90deg,var(--blue-deep),var(--blue));
+    color:#fff;padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1.05}
+  .brand b{font-size:19px;letter-spacing:.5px}
+  .brand span{font-size:10px;color:var(--accent-blue);letter-spacing:2px}
+  .brand-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);
+    border-radius:8px;padding:7px 12px;min-width:120px}
+  .kpi .v{font-size:17px;font-weight:bold}
+  .kpi .l{font-size:10px;color:var(--accent-blue);letter-spacing:.5px;text-transform:uppercase}
+  .kpi.alert .v{color:#FFC59B}
+
+  /* ===== Ticker ===== */
+  .ticker{background:var(--navy);color:var(--accent-blue);font-size:12px;
+    overflow:hidden;white-space:nowrap;padding:6px 0;border-top:1px solid rgba(255,255,255,.12)}
+  .ticker-track{display:inline-block;animation:tick 40s linear infinite;padding-left:100%}
+  @keyframes tick{to{transform:translateX(-100%)}}
+  .ticker b{color:#fff}
+  .ticker .dot{color:var(--orange);margin:0 12px}
+  @media (prefers-reduced-motion: reduce){.ticker-track{animation:none;padding-left:12px}}
+
+  /* ===== Layout ===== */
+  .app{display:grid;grid-template-columns:290px 1fr;gap:16px;padding:16px 22px;max-width:1500px;margin:0 auto}
+  @media(max-width:960px){.app{grid-template-columns:1fr}}
+
+  /* ===== Sidebar (portfolio) ===== */
+  aside{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;align-self:start}
+  .aside-head{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+  .aside-head h2{font-size:13px;color:var(--navy);letter-spacing:1px;text-transform:uppercase}
+  .aside-head p{font-size:11px;color:var(--muted);margin-top:3px}
+  .asset{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid var(--ice-2);
+    cursor:pointer;border-left:3px solid transparent;transition:background .15s}
+  .asset:hover{background:var(--ice)}
+  .asset.active{background:var(--ice);border-left-color:var(--orange)}
+  .asset .ic{width:34px;height:34px;border-radius:8px;background:var(--ice-2);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .asset .nm{font-weight:bold;font-size:12.5px;color:var(--navy)}
+  .asset .loc{font-size:11px;color:var(--muted)}
+  .asset .right{margin-left:auto;text-align:right}
+  .badge{display:inline-block;font-size:10px;font-weight:bold;padding:2px 8px;border-radius:99px;letter-spacing:.3px}
+  .b-ok{background:var(--ok-bg);color:var(--ok)}
+  .b-warn{background:var(--warn-bg);color:var(--warn)}
+  .b-danger{background:var(--danger-bg);color:var(--danger)}
+  .asset .cri-mini{font-size:11px;color:var(--muted-2);margin-top:3px}
+
+  /* ===== Main panel ===== */
+  main{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h3{font-size:12px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:12px}
+
+  /* Profile header */
+  .profile-top{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .profile-id .title{font-size:20px;font-weight:bold;color:var(--navy)}
+  .profile-id .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .chips{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .chip{background:var(--ice);border:1px solid var(--line);border-radius:99px;font-size:11px;padding:4px 10px;color:var(--ink)}
+  .chip b{color:var(--navy)}
+  .status-pill{margin-left:auto;text-align:right}
+  .status-pill .big{font-size:13px;font-weight:bold;padding:6px 14px;border-radius:99px}
+  .status-pill .upd{font-size:10px;color:var(--muted-2);margin-top:6px}
+
+  /* Value grid */
+  .vals{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+  .val{background:var(--ice);border-radius:8px;padding:12px 14px;position:relative}
+  .val .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .val .v{font-size:20px;font-weight:bold;color:var(--navy);margin-top:4px;font-variant-numeric:tabular-nums}
+  .val .d{font-size:11px;margin-top:3px;font-variant-numeric:tabular-nums}
+  .up{color:var(--ok)} .down{color:var(--danger)} .flat{color:var(--muted-2)}
+  .val.emph{background:var(--navy)}
+  .val.emph .l{color:var(--accent-blue)} .val.emph .v{color:#fff}
+
+  /* DNA + gauge row */
+  .dna-row{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:16px}
+  @media(max-width:1100px){.dna-row{grid-template-columns:1fr}}
+  .dna-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .dna-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:11px;width:100%;max-width:300px}
+  .dna-legend .row{display:flex;align-items:center;gap:6px;justify-content:space-between}
+  .dna-legend .k{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .dna-legend .s{font-weight:bold;color:var(--navy);font-variant-numeric:tabular-nums}
+
+  .cri-block{text-align:center;margin-top:4px}
+  .cri-num{font-size:42px;font-weight:bold;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1}
+  .cri-cap{font-size:10.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+  .bars{display:flex;flex-direction:column;gap:12px}
+  .bar-item .bt{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+  .bar-item .bt b{color:var(--navy)}
+  .bar{height:9px;background:var(--ice-2);border-radius:99px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:99px;transition:width .5s ease, background .5s ease}
+
+  .spark-cap{font-size:11px;color:var(--muted);margin-top:8px}
+  svg text{font-family:var(--font)}
+
+  /* Feed */
+  .feed{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+  .ev{display:flex;gap:10px;padding:9px 4px;border-bottom:1px solid var(--ice-2);font-size:12px;animation:fadein .4s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1}}
+  .ev .t{color:var(--muted-2);font-size:10.5px;white-space:nowrap;padding-top:2px;font-variant-numeric:tabular-nums;min-width:64px}
+  .ev .src{font-size:10px;font-weight:bold;letter-spacing:.5px;padding:2px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
+  .src-sat{background:#E8EEFB;color:var(--blue)} .src-mkt{background:var(--ok-bg);color:var(--ok)}
+  .src-clim{background:var(--danger-bg);color:var(--danger)} .src-geo{background:var(--warn-bg);color:var(--warn)}
+  .src-leg{background:#EFEAFB;color:#6B4EAE} .src-eco{background:var(--ice-2);color:var(--navy)}
+  .src-fus{background:var(--orange-soft);color:var(--orange)}
+  .ev .msg b{color:var(--navy)}
+
+  /* Scenario sliders */
+  .scen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+  .scen .sl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+  .scen .sl b{color:var(--navy)}
+  .scen .sv{font-weight:bold;color:var(--orange);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+  .scen .hint{font-size:10.5px;color:var(--muted-2);margin-top:4px}
+  .scen-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+  button{font-family:var(--font);font-size:12.5px;font-weight:bold;border:none;border-radius:8px;
+    padding:9px 16px;cursor:pointer;transition:filter .15s}
+  button:hover{filter:brightness(1.08)}
+  button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-ghost{background:var(--ice-2);color:var(--navy)}
+  .btn-orange{background:var(--orange);color:#fff}
+  .scen-note{font-size:11px;color:var(--muted);margin-left:auto}
+
+  /* Prescriptive */
+  .rec{display:flex;gap:10px;padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;border:1px solid var(--line);background:var(--ice)}
+  .rec.hi{border-color:#F5C6A5;background:var(--orange-soft)}
+  .rec .no{font-weight:bold;color:var(--orange);min-width:20px}
+  .rec .why{color:var(--muted);font-size:11px;margin-top:2px}
+  .hitl{margin-top:10px;padding:10px 12px;border-left:3px solid var(--blue);background:var(--ice);font-size:11.5px;color:var(--muted)}
+  .hitl b{color:var(--navy)}
+
+  footer{padding:14px 22px 26px;text-align:center;font-size:11px;color:var(--muted-2)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><b>COLARIS</b><span>COLLATERAL RISK INTELLIGENCE</span></div>
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kpiAssets">–</div><div class="l">Agunan dipantau</div></div>
+    <div class="kpi"><div class="v" id="kpiValue">–</div><div class="l">Nilai portofolio</div></div>
+    <div class="kpi"><div class="v" id="kpiWatch">–</div><div class="l">Watchlist</div></div>
+    <div class="kpi alert"><div class="v" id="kpiAlerts">–</div><div class="l">Early warning aktif</div></div>
+  </div>
+  <div class="brand-right"><img src="data:image/png;base64,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" alt="Logo BRI" style="height:26px;display:block"></div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+
+<div class="app">
+  <aside aria-label="Daftar portofolio agunan">
+    <div class="aside-head">
+      <h2>Portofolio Agunan</h2>
+      <p>Simulasi · 6 aset dengan Collateral Digital DNA</p>
+      <button id="btnAddLive" style="margin-top:10px;width:100%;border:1px dashed #0054A6;background:#EAF2FA;color:#0054A6;border-radius:8px;padding:9px;font-family:Arial;font-size:11.5px;font-weight:bold;cursor:pointer">+ Tambah Agunan (Data Real)</button>
+    </div>
+    <div id="assetList"></div>
+  </aside>
+
+  <main>
+    <!-- Profile -->
+    <section class="card" aria-label="Profil agunan">
+      <div class="profile-top">
+        <div class="profile-id">
+          <div class="title" id="pTitle">–</div>
+          <div class="sub" id="pSub">–</div>
+          <div class="chips" id="pChips"></div>
+        </div>
+        <div class="status-pill">
+          <span class="big" id="pStatus">–</span>
+          <div class="upd" id="pUpdated">–</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Valuation -->
+    <section class="card">
+      <h3>Decision Intelligence · Valuasi</h3>
+      <div class="vals">
+        <div class="val"><div class="l">Nilai Pasar Wajar (NPW)</div><div class="v" id="vNpw">–</div><div class="d" id="dNpw"></div></div>
+        <div class="val"><div class="l">Nilai Likuidasi (NL)</div><div class="v" id="vNl">–</div><div class="d" id="dNl"></div></div>
+        <div class="val"><div class="l">Proyeksi NPW 12 bln</div><div class="v" id="vPnpw">–</div><div class="d" id="dPnpw"></div></div>
+        <div class="val"><div class="l">LTV saat ini</div><div class="v" id="vLtv">–</div><div class="d" id="dLtv"></div></div>
+        <div class="val emph"><div class="l">Recovery Probability</div><div class="v" id="vRec">–</div></div>
+      </div>
+      <div id="spark" style="margin-top:16px"></div>
+      <div class="spark-cap">Riwayat NPW 24 bulan terakhir (simulasi) · titik oranye = event terdeteksi</div>
+    </section>
+
+    <!-- DNA + scores -->
+    <section class="card">
+      <h3>Collateral Digital DNA · Skor Risiko</h3>
+      <div class="dna-row">
+        <div class="dna-wrap">
+          <div id="dnaRing"></div>
+          <div class="cri-block">
+            <div class="cri-num" id="criNum">–</div>
+            <div class="cri-cap">Collateral Risk Index (0–100, tinggi = berisiko)</div>
+          </div>
+          <div class="dna-legend" id="dnaLegend"></div>
+        </div>
+        <div class="bars" id="scoreBars"></div>
+      </div>
+    </section>
+
+    <!-- Scenario -->
+    <section class="card">
+      <h3>Scenario &amp; Stress Testing</h3>
+      <div class="scen-grid">
+        <div class="scen">
+          <div class="sl"><b>Suku bunga</b><span class="sv" id="svRate">+0 bps</span></div>
+          <input type="range" id="slRate" min="0" max="300" step="25" value="0" aria-label="Kenaikan suku bunga dalam basis poin">
+          <div class="hint">Kenaikan menekan permintaan &amp; harga aset</div>
+        </div>
+        <div class="scen">
+          <div class="sl"><b>Harga properti regional</b><span class="sv" id="svProp">0%</span></div>
+          <input type="range" id="slProp" min="-30" max="15" step="1" value="0" aria-label="Perubahan harga properti regional dalam persen">
+          <div class="hint">Koreksi pasar di wilayah aset</div>
+        </div>
+        <div class="scen">
+          <div class="sl"><b>Kejadian banjir</b><span class="sv" id="svFlood">Tidak ada</span></div>
+          <input type="range" id="slFlood" min="0" max="3" step="1" value="0" aria-label="Tingkat keparahan kejadian banjir">
+          <div class="hint">0 = tidak ada · 3 = banjir besar di sekitar aset</div>
+        </div>
+        <div class="scen">
+          <div class="sl"><b>Infrastruktur baru</b><span class="sv" id="svInfra">Tidak ada</span></div>
+          <input type="range" id="slInfra" min="0" max="2" step="1" value="0" aria-label="Pembangunan infrastruktur baru di sekitar aset">
+          <div class="hint">Tol/LRT baru menaikkan nilai kawasan</div>
+        </div>
+      </div>
+      <div class="scen-actions">
+        <button class="btn-orange" id="btnSim">▶ Jalankan monitoring</button>
+        <button class="btn-ghost" id="btnReset">Reset skenario</button>
+        <span class="scen-note" id="scenNote">Skenario baseline · nilai mengikuti data terkini</span>
+      </div>
+    </section>
+
+    <!-- Feed + Prescriptive -->
+    <section class="card">
+      <h3>Intelligence Feed · Early Warning</h3>
+      <div class="feed" id="feed" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h3>Prescriptive Intelligence · Rekomendasi</h3>
+      <div id="recs"></div>
+      <div class="hitl"><b>Human-in-the-loop:</b> seluruh rekomendasi di atas adalah decision support dengan reason code (Explainable AI). Keputusan akhir tetap berada pada pejabat kredit yang berwenang.</div>
+    </section>
+  </main>
+</div>
+
+<footer>BRI COLARIS · Simulasi interaktif untuk EMBRIO 2026 · Seluruh data pada halaman ini fiktif dan dibangkitkan untuk keperluan demonstrasi, kecuali aset yang ditambahkan lewat "Tambah Agunan (Data Real)" yang memakai data publik live.</footer>
+
+<div id="liveModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:88vh;overflow-y:auto;padding:22px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 style="font-family:Arial;font-size:15px;color:#003A73;font-weight:bold">Tambah Agunan · Data Real</h3>
+      <button id="liveModalClose" style="border:none;background:none;font-size:20px;cursor:pointer;color:#6B7280;line-height:1">&times;</button>
+    </div>
+    <p style="font-family:Arial;font-size:11.5px;color:#6B7280;margin-bottom:14px;line-height:1.5">Masukkan alamat nyata di Indonesia. Skor Market/Geo/Climate dihitung dari data publik live (elevasi, curah hujan, debit sungai, gempa USGS, OpenStreetMap).</p>
+
+    <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin-bottom:5px">Alamat agunan</label>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="liveAddr" placeholder="cth: Pluit, Jakarta Utara" style="flex:1;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+      <button id="liveGeoBtn" style="border:none;background:#0054A6;color:#fff;border-radius:8px;padding:9px 14px;font-family:Arial;font-weight:bold;font-size:12px;cursor:pointer">Cari</button>
+    </div>
+    <div id="liveGeoResults" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+
+    <div id="liveProfileFields" style="display:none;margin-top:14px">
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Jenis agunan</label>
+      <select id="liveType" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+        <option value="🏠|Rumah Tinggal|Properti residensial">Rumah tinggal</option>
+        <option value="🏬|Ruko|Properti komersial">Ruko / komersial</option>
+        <option value="🏭|Gudang|Properti industri">Gudang / industri</option>
+        <option value="🌾|Lahan|Lahan produktif">Tanah kosong</option>
+      </select>
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Jenis sertifikat</label>
+      <select id="liveCert" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+        <option value="95">SHM</option><option value="85">SHGB</option><option value="72">HGU/Hak Pakai</option><option value="45">AJB/Girik</option>
+      </select>
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Estimasi nilai pasar (Rp Miliar)</label>
+      <input type="number" id="liveNilai" value="3.0" step="0.1" min="0.1" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Plafon kredit (Rp Miliar)</label>
+      <input type="number" id="livePlafon" value="1.8" step="0.1" min="0.05" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+
+      <button id="liveRunBtn" style="width:100%;margin-top:16px;border:none;background:#F37021;color:#fff;border-radius:10px;padding:11px;font-family:Arial;font-weight:bold;font-size:13px;cursor:pointer">Analisis Data Real &amp; Tambahkan</button>
+    </div>
+
+    <div id="liveSteps" style="margin-top:14px;display:flex;flex-direction:column;gap:6px;font-family:Arial;font-size:11.5px;color:#6B7280"></div>
+    <div id="liveErr" style="display:none;margin-top:10px;background:#FBEAEE;color:#C0455C;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:12px"></div>
+  </div>
+</div>
+
+<script src="/live-engine.js"></script>
+<script>
+"use strict";
+/* ================= Data ================= */
+const fmtB = v => {
+  if (v >= 1000) return (v/1000).toFixed(2).replace(".",",") + " T";
+  return v.toFixed(1).replace(".",",") + " M";
+};
+const rupiah = v => "Rp " + fmtB(v);
+
+const ENGINE_COLORS = {
+  Market:"#0054A6", Legal:"#6B4EAE", Geo:"#B7791F", Climate:"#C0455C", Economic:"#1E8E5A"
+};
+
+/* score = tingkat KESEHATAN per dimensi (0-100, tinggi = sehat) */
+const ASSETS = [
+  { id:"A1", icon:"🏬", name:"Ruko 3 Lantai · Bekasi Timur", type:"Properti komersial",
+    loc:"Bekasi, Jawa Barat", plafon:4.2, npw0:6.8, liq:0.78,
+    scores:{Market:74, Legal:88, Geo:70, Climate:58, Economic:72},
+    floodProne:true, notes:"Kawasan niaga padat, dekat sungai" },
+  { id:"A2", icon:"🏭", name:"Gudang Logistik · Cikarang", type:"Properti industri",
+    loc:"Cikarang, Jawa Barat", plafon:18.5, npw0:31.0, liq:0.72,
+    scores:{Market:81, Legal:92, Geo:84, Climate:76, Economic:78},
+    floodProne:false, notes:"Koridor industri, akses tol" },
+  { id:"A3", icon:"🏠", name:"Rumah Tinggal · Denpasar", type:"Properti residensial",
+    loc:"Denpasar, Bali", plafon:1.6, npw0:2.9, liq:0.82,
+    scores:{Market:86, Legal:90, Geo:88, Climate:80, Economic:84},
+    floodProne:false, notes:"Kawasan hunian premium" },
+  { id:"A4", icon:"🌾", name:"Lahan Perkebunan · Kampar", type:"Lahan produktif",
+    loc:"Kampar, Riau", plafon:7.4, npw0:12.2, liq:0.55,
+    scores:{Market:62, Legal:64, Geo:60, Climate:52, Economic:66},
+    floodProne:true, notes:"Sertifikat dalam proses pemecahan" },
+  { id:"A5", icon:"🏢", name:"Ruang Kantor · Jakarta Selatan", type:"Properti komersial",
+    loc:"Jakarta Selatan, DKI Jakarta", plafon:22.0, npw0:38.5, liq:0.75,
+    scores:{Market:68, Legal:94, Geo:90, Climate:82, Economic:70},
+    floodProne:false, notes:"Okupansi perkantoran melunak" },
+  { id:"A6", icon:"🏘️", name:"Klaster Perumahan · Semarang", type:"Properti residensial",
+    loc:"Semarang, Jawa Tengah", plafon:9.8, npw0:15.6, liq:0.74,
+    scores:{Market:72, Legal:86, Geo:66, Climate:48, Economic:71},
+    floodProne:true, notes:"Sebagian blok di zona rob" },
+];
+
+/* ================= State ================= */
+let currentId = "A1";
+let scen = { rate:0, prop:0, flood:0, infra:0 };
+let simTimer = null;
+let simMonth = 0;
+let feedItems = [];
+let histories = {}; // per asset: 24 nilai
+let eventMarks = {}; // per asset: bulan-bulan event
+
+function seedHistories(){
+  ASSETS.forEach(a=>{
+    const arr=[]; let v = a.npw0 * 0.92; const marks=[];
+    for(let i=0;i<24;i++){
+      const drift = (a.scores.Market-65)/2600;
+      const wig = Math.sin(i*1.7 + a.npw0)*0.006 + (((i*7 + a.plafon*13)%10)-5)/900;
+      v = v * (1 + drift + wig);
+      if (a.floodProne && (i===9 || i===17)) { v*= i===9?0.985:0.99; marks.push(i); }
+      arr.push(v);
+    }
+    const k = a.npw0/arr[23];
+    histories[a.id]=arr.map(x=>x*k);
+    eventMarks[a.id]=marks;
+  });
+}
+seedHistories();
+
+/* ================= Model ================= */
+function computeAdjusted(a){
+  const s = {...a.scores};
+  let npw = a.npw0;
+
+  // suku bunga: -0.9% NPW per 100bps + tekan Market & Economic
+  const rateHit = scen.rate/100 * 0.9;
+  npw *= (1 - rateHit/100 * 10);
+  s.Market -= scen.rate/25 * 1.4;
+  s.Economic -= scen.rate/25 * 1.8;
+
+  // harga properti regional
+  npw *= (1 + scen.prop/100);
+  s.Market += scen.prop * 0.7;
+
+  // banjir (lebih berat jika floodProne)
+  const fmul = a.floodProne ? 1.6 : 0.7;
+  npw *= (1 - scen.flood * 0.035 * fmul);
+  s.Climate -= scen.flood * 11 * fmul;
+  s.Geo -= scen.flood * 4 * fmul;
+
+  // infrastruktur baru
+  npw *= (1 + scen.infra * 0.03);
+  s.Geo += scen.infra * 7;
+  s.Market += scen.infra * 4;
+
+  Object.keys(s).forEach(k=> s[k]=Math.max(5,Math.min(98,Math.round(s[k]))));
+
+  const nl = npw * a.liq * (1 - scen.flood*0.02*(a.floodProne?1.4:0.6));
+  const avg = (s.Market+s.Legal+s.Geo+s.Climate+s.Economic)/5;
+  const cri = Math.max(2,Math.min(98,Math.round(100-avg)));
+  const ltv = a.plafon / npw * 100;
+  const rec = Math.max(15,Math.min(97,Math.round(a.liq*100 - cri*0.45 + (s.Legal-70)*0.25)));
+  const growth = (s.Market-65)/8 + scen.prop*0.35 + scen.infra*2.2 - scen.rate/100 - scen.flood*1.5;
+  const pnpw = npw * (1 + growth/100);
+  return { s, npw, nl, cri, ltv, rec, pnpw };
+}
+
+function criBadge(cri){
+  if (cri < 30) return {cls:"b-ok", pill:"background:var(--ok-bg);color:var(--ok)", txt:"Sehat"};
+  if (cri < 50) return {cls:"b-warn", pill:"background:var(--warn-bg);color:var(--warn)", txt:"Perlu Perhatian"};
+  return {cls:"b-danger", pill:"background:var(--danger-bg);color:var(--danger)", txt:"Watchlist"};
+}
+
+/* ================= Render: sidebar & KPI ================= */
+function renderSidebar(){
+  const el = document.getElementById("assetList");
+  el.innerHTML = "";
+  ASSETS.forEach(a=>{
+    const m = computeAdjusted(a);
+    const b = criBadge(m.cri);
+    const div = document.createElement("div");
+    div.className = "asset" + (a.id===currentId?" active":"");
+    div.setAttribute("role","button");
+    div.setAttribute("tabindex","0");
+    div.innerHTML = `
+      <div class="ic">${a.icon}</div>
+      <div><div class="nm">${a.name}${a.live?' <span style="background:#0054A6;color:#fff;font-size:8.5px;font-weight:bold;padding:1px 6px;border-radius:99px;vertical-align:middle;margin-left:4px">LIVE</span>':''}</div><div class="loc">${a.loc}</div></div>
+      <div class="right"><span class="badge ${b.cls}">${b.txt}</span>
+        <div class="cri-mini">CRI ${m.cri}</div></div>`;
+    const go = ()=>{ currentId=a.id; renderAll(); };
+    div.addEventListener("click", go);
+    div.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();go();} });
+    el.appendChild(div);
+  });
+}
+
+function renderKpis(){
+  let total=0, watch=0, alerts=0;
+  ASSETS.forEach(a=>{
+    const m=computeAdjusted(a); total+=m.npw;
+    if(m.cri>=50) watch++;
+    if(m.cri>=50 || m.ltv>75) alerts++;
+  });
+  document.getElementById("kpiAssets").textContent = ASSETS.length;
+  document.getElementById("kpiValue").textContent = rupiah(total);
+  document.getElementById("kpiWatch").textContent = watch + " aset";
+  document.getElementById("kpiAlerts").textContent = alerts;
+}
+
+/* ================= Render: profile ================= */
+function pct(v){return v.toFixed(1).replace(".",",")+"%";}
+
+function renderProfile(){
+  const a = ASSETS.find(x=>x.id===currentId);
+  const m = computeAdjusted(a);
+  const b = criBadge(m.cri);
+
+  document.getElementById("pTitle").textContent = a.name;
+  document.getElementById("pSub").textContent = `${a.type} · ${a.loc} · ${a.notes}` + (a.live?" · Sumber: data publik live (Open-Meteo, USGS, OpenStreetMap)":"");
+  document.getElementById("pChips").innerHTML = `
+    <span class="chip">Plafon kredit <b>${rupiah(a.plafon)}</b></span>
+    <span class="chip">Faktor likuidasi <b>${Math.round(a.liq*100)}%</b></span>
+    <span class="chip">Rawan banjir <b>${a.floodProne?"Ya":"Tidak"}</b></span>
+    <span class="chip">ID Digital DNA <b>CDNA-${a.id}-2026</b></span>`;
+  const st = document.getElementById("pStatus");
+  st.textContent = b.txt; st.style.cssText = b.pill;
+  document.getElementById("pUpdated").textContent =
+    "Diperbarui otomatis · " + (simMonth? `bulan simulasi ke-${simMonth}` : "baseline hari ini");
+
+  // valuation
+  const baseNpw = a.npw0, baseNl = a.npw0*a.liq;
+  const dn = (m.npw-baseNpw)/baseNpw*100, dl = (m.nl-baseNl)/baseNl*100;
+  const setDelta=(id,d)=>{
+    const el=document.getElementById(id);
+    if(Math.abs(d)<0.05){el.textContent="stabil vs baseline";el.className="d flat";}
+    else{el.textContent=(d>0?"▲ +":"▼ ")+d.toFixed(1).replace(".",",")+"% vs baseline";
+      el.className="d "+(d>0?"up":"down");}
+  };
+  document.getElementById("vNpw").textContent = rupiah(m.npw);
+  setDelta("dNpw",dn);
+  document.getElementById("vNl").textContent = rupiah(m.nl);
+  setDelta("dNl",dl);
+  document.getElementById("vPnpw").textContent = rupiah(m.pnpw);
+  setDelta("dPnpw",(m.pnpw-m.npw)/m.npw*100);
+  document.getElementById("vLtv").textContent = pct(m.ltv);
+  const dltv=document.getElementById("dLtv");
+  if(m.ltv>75){dltv.textContent="melewati ambang kebijakan 75%";dltv.className="d down";}
+  else{dltv.textContent="dalam batas kebijakan";dltv.className="d up";}
+  document.getElementById("vRec").textContent = m.rec + "%";
+
+  renderSpark(a,m);
+  renderDNA(m);
+  renderBars(m);
+  renderRecs(a,m);
+}
+
+/* ================= Sparkline ================= */
+function renderSpark(a,m){
+  const H=110,W=760,P=8;
+  const hist=[...histories[a.id]];
+  hist[hist.length-1]=m.npw;
+  const min=Math.min(...hist)*0.985,max=Math.max(...hist)*1.015;
+  const x=i=>P+i*(W-2*P)/(hist.length-1);
+  const y=v=>H-P-(v-min)/(max-min)*(H-2*P);
+  let path="M"+hist.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" L");
+  const marks=eventMarks[a.id].map(i=>`<circle cx="${x(i)}" cy="${y(hist[i])}" r="4" fill="#F37021"/>`).join("");
+  const area = path + ` L${x(hist.length-1)},${H-P} L${x(0)},${H-P} Z`;
+  document.getElementById("spark").innerHTML =
+   `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Grafik riwayat NPW">
+      <path d="${area}" fill="#EAF2FA"/>
+      <path d="${path}" fill="none" stroke="#0054A6" stroke-width="2.5" stroke-linejoin="round"/>
+      ${marks}
+      <text x="${P}" y="12" font-size="10" fill="#9CA3AF">${rupiah(max)}</text>
+      <text x="${P}" y="${H-2}" font-size="10" fill="#9CA3AF">${rupiah(min)}</text>
+    </svg>`;
+}
+
+/* ================= DNA ring ================= */
+function renderDNA(m){
+  const keys=Object.keys(ENGINE_COLORS);
+  const R=74, C=95, sw=13, gap=5;
+  const seg=(360-5*gap)/5;
+  let deg=-90, arcs="";
+  keys.forEach(k=>{
+    const val=m.s[k];
+    const span=seg*val/100;
+    arcs+=describeArc(C,C,R,deg,deg+seg,"#EAF2FA",sw);
+    arcs+=describeArc(C,C,R,deg,deg+span,ENGINE_COLORS[k],sw);
+    deg+=seg+gap;
+  });
+  document.getElementById("dnaRing").innerHTML =
+    `<svg width="190" height="190" viewBox="0 0 190 190" role="img" aria-label="Cincin Collateral Digital DNA">
+       ${arcs}
+       <text x="95" y="90" text-anchor="middle" font-size="11" fill="#6B7280">DNA</text>
+       <text x="95" y="106" text-anchor="middle" font-size="13" font-weight="bold" fill="#003A73">${currentId}</text>
+     </svg>`;
+  document.getElementById("criNum").textContent = m.cri;
+  document.getElementById("dnaLegend").innerHTML = keys.map(k=>
+    `<div class="row"><span class="k"><span class="sw" style="background:${ENGINE_COLORS[k]}"></span>${k}</span>
+     <span class="s">${m.s[k]}</span></div>`).join("");
+}
+function polar(cx,cy,r,deg){const rad=deg*Math.PI/180;return [cx+r*Math.cos(rad),cy+r*Math.sin(rad)];}
+function describeArc(cx,cy,r,a1,a2,color,w){
+  if(a2-a1<0.5)return"";
+  const [x1,y1]=polar(cx,cy,r,a1),[x2,y2]=polar(cx,cy,r,a2);
+  const large=(a2-a1)>180?1:0;
+  return `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large} 1 ${x2.toFixed(1)},${y2.toFixed(1)}"
+    fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+
+/* ================= Score bars ================= */
+const BAR_DESC = {
+  Market:"Harga pasar & likuiditas aset di wilayah",
+  Legal:"Kelengkapan sertifikat & kepatuhan hukum",
+  Geo:"Aksesibilitas, tata ruang, perkembangan kawasan",
+  Climate:"Paparan banjir, bencana & risiko iklim",
+  Economic:"Sensitivitas terhadap kondisi makroekonomi"
+};
+function renderBars(m){
+  document.getElementById("scoreBars").innerHTML =
+    Object.keys(ENGINE_COLORS).map(k=>{
+      const v=m.s[k];
+      return `<div class="bar-item">
+        <div class="bt"><b>${k} Intelligence</b><span>${v}/100 · ${BAR_DESC[k]}</span></div>
+        <div class="bar"><i style="width:${v}%;background:${ENGINE_COLORS[k]}"></i></div>
+      </div>`;
+    }).join("");
+}
+
+/* ================= Prescriptive ================= */
+function renderRecs(a,m){
+  const recs=[];
+  if(m.cri>=50) recs.push({hi:true,t:"Masukkan aset ke watchlist & lakukan appraisal ulang dalam 30 hari",
+    w:`Reason code: CRI ${m.cri} melewati ambang 50 (skor Climate ${m.s.Climate}, Market ${m.s.Market}).`});
+  if(m.ltv>75) recs.push({hi:true,t:"Tinjau ulang LTV & pertimbangkan agunan tambahan",
+    w:`Reason code: LTV ${pct(m.ltv)} melebihi ambang kebijakan 75% akibat penurunan NPW.`});
+  if(m.s.Climate<55) recs.push({hi:false,t:"Verifikasi kondisi fisik pasca-event iklim via citra satelit resolusi tinggi",
+    w:`Reason code: skor Climate ${m.s.Climate} · aset ${a.floodProne?"berada di zona rawan banjir":"terdampak skenario iklim"}.`});
+  if(m.s.Legal<70) recs.push({hi:false,t:"Prioritaskan penyelesaian dokumen legal bersama unit terkait",
+    w:`Reason code: skor Legal ${m.s.Legal} · ${a.notes.toLowerCase()}.`});
+  if(m.rec<55) recs.push({hi:false,t:"Susun strategi recovery dini bersama Unit Collection & Recovery",
+    w:`Reason code: Recovery Probability ${m.rec}% di bawah median portofolio.`});
+  if(recs.length===0) recs.push({hi:false,t:"Pertahankan monitoring digital berkala, tanpa appraisal ulang",
+    w:`Reason code: seluruh skor sehat (CRI ${m.cri}, LTV ${pct(m.ltv)}) · risk-based appraisal menunda kunjungan fisik.`});
+  document.getElementById("recs").innerHTML = recs.map((r,i)=>
+    `<div class="rec ${r.hi?"hi":""}"><span class="no">${String(i+1).padStart(2,"0")}</span>
+      <span><b>${r.t}</b><div class="why">${r.w}</div></span></div>`).join("");
+}
+
+/* ================= Feed ================= */
+const FEED_POOL = [
+  {src:"sat", tag:"SATELLITE", msg:a=>`Citra terbaru <b>${a.loc}</b>: tidak ada perubahan struktur fisik pada objek agunan.`},
+  {src:"mkt", tag:"MARKET", msg:a=>`Transaksi pembanding baru di radius 2 km <b>${a.loc}</b>; harga per m² terpantau ${scen.prop>=0?"stabil":"terkoreksi"}.`},
+  {src:"geo", tag:"GEO", msg:a=>`Pembaruan RTRW kawasan <b>${a.loc}</b> dipantau; tidak ada perubahan zonasi pada persil agunan.`},
+  {src:"eco", tag:"ECONOMIC", msg:()=>`Indikator makro diperbarui: suku bunga acuan skenario <b>+${scen.rate} bps</b> diterapkan ke seluruh portofolio.`},
+  {src:"fus", tag:"FUSION", msg:a=>`LLM merangkum 14 artikel berita lokal <b>${a.loc}</b>: sentimen kawasan netral-positif.`},
+  {src:"leg", tag:"LEGAL", msg:a=>`Pengecekan berkala status sertifikat <b>${a.name.split("·")[0].trim()}</b>: tidak ditemukan catatan blokir baru.`},
+];
+const FLOOD_EVENTS = [
+  {src:"clim", tag:"CLIMATE", msg:a=>`⚠ Deteksi genangan berbasis SAR di sekitar <b>${a.loc}</b>; skor Climate diturunkan otomatis.`},
+  {src:"sat", tag:"SATELLITE", msg:a=>`Verifikasi visual pasca-banjir <b>${a.name.split("·")[0].trim()}</b> dijadwalkan; early warning dikirim ke RM.`},
+];
+
+function pushFeed(item, asset){
+  const now = new Date();
+  const t = simMonth? `Bln ${simMonth}` :
+    now.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+  feedItems.unshift({t, ...item, txt:item.msg(asset)});
+  feedItems = feedItems.slice(0,18);
+  document.getElementById("feed").innerHTML = feedItems.map(f=>
+    `<div class="ev"><span class="t">${f.t}</span>
+      <span class="src src-${f.src}">${f.tag}</span>
+      <span class="msg">${f.txt}</span></div>`).join("");
+}
+
+/* ================= Ticker ================= */
+function renderTicker(){
+  const parts = ASSETS.map(a=>{
+    const m=computeAdjusted(a);
+    return `<b>${a.id}</b> ${a.name.split("·")[0].trim()} · CRI ${m.cri} · NPW ${rupiah(m.npw)}`;
+  });
+  document.getElementById("ticker").innerHTML =
+    parts.join('<span class="dot">●</span>') + '<span class="dot">●</span>' +
+    "Continuous collateral intelligence · 7 engine aktif · Explainable AI";
+}
+
+/* ================= Scenario controls ================= */
+const FLOOD_LBL=["Tidak ada","Ringan","Sedang","Besar"];
+const INFRA_LBL=["Tidak ada","Jalan tol baru","Tol + LRT"];
+function bindScenario(){
+  const upd=()=>{
+    scen.rate=+document.getElementById("slRate").value;
+    scen.prop=+document.getElementById("slProp").value;
+    scen.flood=+document.getElementById("slFlood").value;
+    scen.infra=+document.getElementById("slInfra").value;
+    document.getElementById("svRate").textContent="+"+scen.rate+" bps";
+    document.getElementById("svProp").textContent=(scen.prop>0?"+":"")+scen.prop+"%";
+    document.getElementById("svFlood").textContent=FLOOD_LBL[scen.flood];
+    document.getElementById("svInfra").textContent=INFRA_LBL[scen.infra];
+    const active = scen.rate||scen.prop||scen.flood||scen.infra;
+    document.getElementById("scenNote").textContent = active
+      ? "Skenario aktif · seluruh nilai & skor dihitung ulang secara real-time"
+      : "Skenario baseline · nilai mengikuti data terkini";
+    renderAll(false);
+  };
+  ["slRate","slProp","slFlood","slInfra"].forEach(id=>
+    document.getElementById(id).addEventListener("input",upd));
+  document.getElementById("btnReset").addEventListener("click",()=>{
+    document.getElementById("slRate").value=0;
+    document.getElementById("slProp").value=0;
+    document.getElementById("slFlood").value=0;
+    document.getElementById("slInfra").value=0;
+    upd();
+  });
+}
+
+/* ================= Simulation loop ================= */
+function bindSim(){
+  const btn=document.getElementById("btnSim");
+  btn.addEventListener("click",()=>{
+    if(simTimer){ clearInterval(simTimer); simTimer=null;
+      btn.textContent="▶ Jalankan monitoring"; btn.className="btn-orange"; return; }
+    btn.textContent="⏸ Jeda monitoring"; btn.className="btn-primary";
+    simTimer=setInterval(()=>{
+      simMonth++;
+      const a = ASSETS[Math.floor(Math.random()*ASSETS.length)];
+      const flooding = scen.flood>0 && a.floodProne && Math.random()<0.35;
+      const pool = flooding? FLOOD_EVENTS : FEED_POOL;
+      pushFeed(pool[Math.floor(Math.random()*pool.length)], a);
+      // small drift on histories
+      ASSETS.forEach(x=>{
+        const h=histories[x.id];
+        h.push(h[h.length-1]*(1+((Math.random()-0.48))*0.01));
+        if(h.length>24)h.shift();
+        eventMarks[x.id]=eventMarks[x.id].map(i=>i-1).filter(i=>i>=0);
+        if(flooding && x.id===a.id) eventMarks[x.id].push(23);
+      });
+      renderAll(false);
+    }, 2200);
+  });
+}
+
+/* ================= Boot ================= */
+function renderAll(scrollFeed=true){
+  renderSidebar(); renderKpis(); renderProfile(); renderTicker();
+}
+bindScenario(); bindSim();
+renderAll();
+const a0=ASSETS[0];
+pushFeed(FEED_POOL[0],a0);
+pushFeed(FEED_POOL[4],ASSETS[2]);
+pushFeed(FEED_POOL[1],ASSETS[5]);
+
+/* ================= Add Real Collateral (live data) ================= */
+const LIQ_BY_TYPE = { "Rumah Tinggal":0.80, "Ruko":0.78, "Gudang":0.72, "Lahan":0.60 };
+let liveSelectedLoc = null;
+
+function openLiveModal(){
+  document.getElementById("liveModalOverlay").style.display="flex";
+  document.getElementById("liveAddr").value="";
+  document.getElementById("liveGeoResults").innerHTML="";
+  document.getElementById("liveProfileFields").style.display="none";
+  document.getElementById("liveSteps").innerHTML="";
+  document.getElementById("liveErr").style.display="none";
+  liveSelectedLoc=null;
+}
+function closeLiveModal(){ document.getElementById("liveModalOverlay").style.display="none"; }
+document.getElementById("btnAddLive").addEventListener("click", openLiveModal);
+document.getElementById("liveModalClose").addEventListener("click", closeLiveModal);
+document.getElementById("liveModalOverlay").addEventListener("click", e=>{ if(e.target.id==="liveModalOverlay") closeLiveModal(); });
+
+async function liveGeocode(){
+  const q=document.getElementById("liveAddr").value.trim();
+  if(!q) return;
+  const box=document.getElementById("liveGeoResults");
+  box.innerHTML='<div style="font-family:Arial;font-size:11px;color:#9CA3AF">Mencari lokasi...</div>';
+  try{
+    const results = await ColarisLiveEngine.geocodeSearch(q);
+    if(!results.length){ box.innerHTML='<div style="font-family:Arial;font-size:11px;color:#9CA3AF">Tidak ditemukan.</div>'; return; }
+    box.innerHTML="";
+    results.forEach(r=>{
+      const d=document.createElement("div");
+      d.style.cssText="border:1px solid #DCE5F0;border-radius:8px;padding:8px 10px;font-family:Arial;font-size:11.5px;cursor:pointer;background:#F4F8FC";
+      d.innerHTML=`<b style="color:#003A73;display:block">${r.label}</b>`;
+      d.addEventListener("click",()=>{
+        Array.from(box.children).forEach(c=>c.style.borderColor="#DCE5F0");
+        d.style.borderColor="#0054A6";
+        liveSelectedLoc=r;
+        document.getElementById("liveProfileFields").style.display="block";
+      });
+      box.appendChild(d);
+    });
+  }catch(e){
+    box.innerHTML=`<div style="font-family:Arial;font-size:11px;color:#C0455C">Geocoding gagal: ${e.message}</div>`;
+  }
+}
+document.getElementById("liveGeoBtn").addEventListener("click", liveGeocode);
+document.getElementById("liveAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") liveGeocode(); });
+
+const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine", osm:"Geo & Market Engine"};
+function liveRenderSteps(state){
+  const box=document.getElementById("liveSteps");
+  box.innerHTML = Object.keys(LIVE_STEP_LABELS).map(k=>{
+    const s = state[k] || {state:"pending"};
+    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="loading"?"…":"○";
+    const color = s.state==="done"?"#1E8E5A":s.state==="fail"?"#C0455C":"#6B7280";
+    return `<div style="display:flex;gap:8px"><span style="color:${color};font-weight:bold;width:14px">${icon}</span><span>${s.note || LIVE_STEP_LABELS[k]}</span></div>`;
+  }).join("");
+}
+
+document.getElementById("liveRunBtn").addEventListener("click", async ()=>{
+  if(!liveSelectedLoc) return;
+  const btn=document.getElementById("liveRunBtn");
+  btn.disabled=true; btn.textContent="Menarik data real...";
+  document.getElementById("liveErr").style.display="none";
+  const stepState={};
+  liveRenderSteps(stepState);
+  try{
+    const R = await ColarisLiveEngine.fetchLiveSignals(liveSelectedLoc.lat, liveSelectedLoc.lon, (k,s,n)=>{
+      stepState[k]={state:s, note:n}; liveRenderSteps(stepState);
+    });
+    const certScore = parseInt(document.getElementById("liveCert").value);
+    const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
+    const [icon,shortName,typeLabel] = document.getElementById("liveType").value.split("|");
+    const nilai = Math.max(0.1, parseFloat(document.getElementById("liveNilai").value)||0.1);
+    const plafon = Math.max(0.05, parseFloat(document.getElementById("livePlafon").value)||0.05);
+    const liq = LIQ_BY_TYPE[shortName] || 0.72;
+    const newId = "LIVE" + (ASSETS.filter(a=>a.live).length+1);
+    const shortLoc = liveSelectedLoc.label;
+
+    const newAsset = {
+      id:newId, icon, name: shortName+" · "+shortLoc, type:typeLabel,
+      loc: liveSelectedLoc.full.split(",").slice(1,3).join(",").trim(),
+      plafon, npw0:nilai, liq, scores:scored.scores,
+      floodProne:scored.floodProne, notes: scored.reasons[0] || "Data real-time, tanpa catatan risiko signifikan",
+      live:true, liveReasons:scored.reasons, economicNote:scored.economicNote,
+    };
+    ASSETS.push(newAsset);
+
+    // seed a short synthetic history for the sparkline, anchored to the live npw0
+    const arr=[]; let v=newAsset.npw0*0.94;
+    for(let i=0;i<24;i++){ const wig=Math.sin(i*1.3+newAsset.npw0)*0.004; v*= (1+wig); arr.push(v); }
+    const k=newAsset.npw0/arr[23];
+    histories[newId]=arr.map(x=>x*k);
+    eventMarks[newId]=[];
+
+    currentId = newId;
+    renderAll();
+    closeLiveModal();
+  }catch(e){
+    document.getElementById("liveErr").textContent = "Gagal menganalisis: " + e.message;
+    document.getElementById("liveErr").style.display="block";
+  }finally{
+    btn.disabled=false; btn.textContent="Analisis Data Real & Tambahkan";
+  }
+});
+</script>
+</body>
+</html>

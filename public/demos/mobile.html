@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BRI COLARIS · Demo Mobile App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#00305E; --blue:#0057A8; --blue-deep:#031C34;
+  --orange:#F0691E; --orange-soft:#FDEEE3;
+  --ice:#F4F8FC; --ice-2:#E9F1FA; --line:#E1E8F1;
+  --ink:#1F2A37; --muted:#6B7686; --muted-2:#9AA5B4;
+  --ok:#1B8A56; --ok-bg:#E6F6EC;
+  --warn:#AD7A1E; --warn-bg:#FBF2DF;
+  --danger:#C13B57; --danger-bg:#FAE9EE;
+  --accent-blue:#C7DBF0;
+  --font:'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:
+  radial-gradient(1100px 620px at 72% -8%, #123E6C 0%, transparent 62%),
+  linear-gradient(160deg,#05192E,#0A2A4E 58%,#05192E);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px 12px}
+.stage{display:flex;gap:44px;align-items:center;flex-wrap:wrap;justify-content:center}
+.pitch{color:#D3E1F4;max-width:330px}
+.pitch .k{font-size:11px;letter-spacing:2.4px;color:#F7A468;font-weight:bold}
+.pitch h1{font-size:27px;color:#fff;margin:10px 0 12px;line-height:1.28;font-weight:800}
+.pitch p{font-size:13.5px;line-height:1.6;color:#A9BEDB}
+.pitch ul{margin-top:16px;list-style:none;font-size:12.5px;color:#CBDCF2}
+.pitch li{padding:5px 0;display:flex;gap:9px}
+.pitch li::before{content:"•";color:#F0691E;font-weight:bold}
+
+/* ===== Phone frame ===== */
+.phone{width:392px;height:812px;background:#0B0F14;border-radius:54px;padding:12px;
+  box-shadow:0 40px 90px rgba(0,0,0,.5), 0 4px 20px rgba(0,0,0,.35), inset 0 0 0 2px #1D2733;position:relative;flex-shrink:0}
+.notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:120px;height:26px;background:#0B0F14;border-radius:0 0 16px 16px;z-index:30}
+.screen{width:100%;height:100%;background:var(--ice);border-radius:42px;overflow:hidden;
+  display:flex;flex-direction:column;position:relative}
+@media(max-width:900px){
+  body{padding:0;background:var(--ice)}
+  .pitch{display:none}
+  .phone{width:100%;height:100dvh;border-radius:0;padding:0;box-shadow:none}
+  .screen{border-radius:0}
+  .notch{display:none}
+}
+
+/* ===== Status bar + app bar ===== */
+.statusbar{background:var(--blue-deep);color:#fff;font-size:11px;display:flex;
+  justify-content:space-between;padding:11px 24px 4px;font-weight:bold;letter-spacing:.2px}
+.appbar{background:linear-gradient(96deg,var(--blue-deep),var(--blue) 130%);color:#fff;
+  padding:12px 16px 15px;display:flex;align-items:center;gap:11px;box-shadow:0 6px 14px rgba(0,20,40,.18);position:relative;z-index:2}
+.appbar .logowrap{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.appbar img{width:32px;height:32px;object-fit:contain}
+.appbar .divider{width:1px;height:20px;background:rgba(255,255,255,.28)}
+.appbar .t b{font-size:14.5px;letter-spacing:.4px;display:block}
+.appbar .t span{font-size:8.8px;color:var(--accent-blue);letter-spacing:1.6px;font-weight:600}
+.appbar .bell{margin-left:auto;position:relative;cursor:pointer;background:none;border:none;color:#fff;padding:5px}
+.appbar .bell:active{transform:scale(.9)}
+.appbar .bell .dot{position:absolute;top:-3px;right:-4px;background:var(--orange);color:#fff;
+  font-size:9px;font-weight:800;border-radius:99px;padding:1.5px 5px;min-width:14px;text-align:center;animation:bellPulse 1.8s ease infinite}
+@keyframes bellPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
+/* ===== Content area ===== */
+.content{flex:1;overflow-y:auto;overscroll-behavior:contain;position:relative;scrollbar-width:thin}
+.page{display:none;padding:16px 14px 20px;animation:pgin .3s ease}
+.page.on{display:block}
+@keyframes pgin{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+@keyframes shimmer{0%{background-position:-220px 0}100%{background-position:220px 0}}
+.skeleton{border-radius:15px;background:linear-gradient(90deg,var(--ice-2) 25%,#fff 37%,var(--ice-2) 63%);background-size:400px 100%;animation:shimmer 1.4s ease infinite}
+@media (prefers-reduced-motion: reduce){.page{animation:none}.skeleton{animation:none}}
+
+/* ===== Tab bar ===== */
+.tabbar{display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 4px calc(10px + env(safe-area-inset-bottom))}
+.tab{flex:1;background:none;border:none;font-family:var(--font);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;color:var(--muted-2)}
+.tab:active{transform:scale(.92)}
+.tab .ico{width:20px;height:20px;color:var(--muted-2)}
+.tab .lb{font-size:9.5px;font-weight:bold;letter-spacing:.3px}
+.tab.on{color:var(--blue)}
+.tab.on .ico{color:var(--blue)}
+.tab.on .lb{color:var(--navy)}
+.tab:focus-visible{outline:2px solid var(--orange);border-radius:8px}
+
+/* ===== Shared cards ===== */
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.card h3{font-size:10.5px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px}
+.badge{display:inline-block;font-size:9.5px;font-weight:bold;padding:2px 8px;border-radius:99px}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-danger{background:var(--danger-bg);color:var(--danger)}
+
+/* ===== Home ===== */
+.hello{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.avatar{width:42px;height:42px;border-radius:99px;background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;box-shadow:0 3px 8px rgba(0,60,120,.25)}
+.hello .hi{font-size:11px;color:var(--muted)}
+.hello .nm{font-size:15.5px;font-weight:bold;color:var(--navy)}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kc{background:linear-gradient(135deg,var(--blue-deep),var(--blue));border-radius:15px;padding:13px;color:#fff;box-shadow:0 6px 16px rgba(0,60,120,.18)}
+.kc.alt{background:#fff;border:1px solid var(--line);color:var(--navy);box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.kc .v{font-size:19px;font-weight:bold;font-variant-numeric:tabular-nums}
+.kc .l{font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;opacity:.85;margin-top:3px}
+.kc.alt .l{color:var(--muted);opacity:1}
+.warncard{border-left:4px solid var(--orange);background:var(--orange-soft);border-radius:12px;
+  padding:11px 12px;margin-bottom:10px;cursor:pointer}
+.warncard:active{transform:scale(.98)}
+.warncard .wt{font-size:12.5px;font-weight:bold;color:var(--navy)}
+.warncard .wd{font-size:11px;color:var(--muted);margin-top:3px}
+.warncard .wa{font-size:10.5px;font-weight:bold;color:var(--orange);margin-top:6px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.q{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;cursor:pointer}
+.q:active{transform:scale(.95)}
+.q .qi{font-size:20px}
+.q .ql{font-size:9px;font-weight:bold;color:var(--navy);margin-top:4px;line-height:1.2}
+
+/* ===== Asset list ===== */
+.search{display:flex;gap:8px;margin-bottom:12px}
+.search input{flex:1;border:1px solid var(--line);border-radius:11px;padding:11px 13px;font-size:13px;font-family:var(--font);background:#fff;color:var(--ink)}
+.search input:focus{outline:2px solid var(--accent-blue)}
+.aitem{display:flex;gap:11px;background:#fff;border:1px solid var(--line);border-radius:15px;
+  padding:12px;margin-bottom:10px;cursor:pointer;align-items:center;box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.aitem:active{transform:scale(.98)}
+.aitem .ic{width:38px;height:38px;border-radius:11px;background:var(--ice-2);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.aitem .nm{font-size:12.5px;font-weight:bold;color:var(--navy)}
+.aitem .loc{font-size:10.5px;color:var(--muted)}
+.aitem .right{margin-left:auto;text-align:right;flex-shrink:0}
+.aitem .cri{font-size:10px;color:var(--muted-2);margin-top:3px}
+
+/* ===== Detail ===== */
+.backrow{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.backbtn{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 13px;
+  font-size:12px;font-weight:bold;color:var(--navy);cursor:pointer;font-family:var(--font)}
+.backbtn:active{transform:scale(.95)}
+.dt-title{font-size:16.5px;font-weight:bold;color:var(--navy)}
+.dt-sub{font-size:11px;color:var(--muted);margin:3px 0 12px;line-height:1.4}
+.valrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vv{background:var(--ice);border-radius:11px;padding:11px}
+.vv .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.vv .v{font-size:15px;font-weight:bold;color:var(--navy);margin-top:2px;font-variant-numeric:tabular-nums}
+.vv .d{font-size:10px;margin-top:2px}
+.up{color:var(--ok)}.down{color:var(--danger)}.flat{color:var(--muted-2)}
+.vv.emph{background:var(--navy)}
+.vv.emph .l{color:var(--accent-blue)}.vv.emph .v{color:#fff}
+.dna-center{display:flex;gap:15px;align-items:center}
+.dna-center .cri-num{font-size:34px;font-weight:bold;color:var(--navy);line-height:1;font-variant-numeric:tabular-nums}
+.dna-center .cri-cap{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px;max-width:130px;line-height:1.4}
+.minibars{margin-top:13px;display:flex;flex-direction:column;gap:9px}
+.mb .bt{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px}
+.mb .bt b{color:var(--navy)}
+.mb .bar{height:7px;background:var(--ice-2);border-radius:99px;overflow:hidden}
+.mb .bar i{display:block;height:100%;border-radius:99px;transition:width .5s ease}
+.rec{display:flex;gap:8px;padding:9px 10px;border-radius:11px;font-size:11.5px;margin-bottom:8px;
+  border:1px solid var(--line);background:var(--ice)}
+.rec.hi{border-color:#F5C6A5;background:var(--orange-soft)}
+.rec .no{font-weight:bold;color:var(--orange)}
+.rec .why{color:var(--muted);font-size:10px;margin-top:2px}
+.simbtn{width:100%;border:none;border-radius:13px;padding:12px;font-family:var(--font);
+  font-size:12.5px;font-weight:bold;background:var(--orange);color:#fff;cursor:pointer;margin-top:3px;box-shadow:0 6px 14px rgba(240,105,30,.25)}
+.simbtn:active{transform:scale(.98)}
+.hitl-m{margin-top:11px;padding:9px 10px;border-left:3px solid var(--blue);background:var(--ice);
+  font-size:10px;color:var(--muted);border-radius:0 9px 9px 0;line-height:1.5}
+.hitl-m b{color:var(--navy)}
+
+/* ===== Copilot ===== */
+.chatwrap{display:flex;flex-direction:column;height:100%}
+.chat{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.bub{max-width:82%;padding:10px 13px;border-radius:15px;font-size:12.5px;line-height:1.45;animation:bubIn .25s ease}
+.bub.me{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.bub.ai{align-self:flex-start;background:#fff;border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.bub.ai b{color:var(--navy)}
+.bub .rc{display:block;margin-top:6px;font-size:10px;color:var(--muted);border-top:1px dashed var(--line);padding-top:5px}
+@keyframes bubIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.typing{align-self:flex-start;background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px 15px;display:flex;gap:4px}
+.typing i{width:6px;height:6px;border-radius:99px;background:var(--muted-2);display:inline-block;animation:dotBlink 1.2s infinite ease-in-out}
+.typing i:nth-child(2){animation-delay:.15s}
+.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dotBlink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+.sugg{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
+.sg{background:#fff;border:1px solid var(--accent-blue);color:var(--blue);border-radius:99px;
+  font-size:10.5px;font-weight:bold;padding:6px 11px;cursor:pointer;font-family:var(--font)}
+.sg:active{transform:scale(.95)}
+.inputrow{display:flex;gap:8px;padding:10px 14px;background:#fff;border-top:1px solid var(--line)}
+.inputrow input{flex:1;border:1px solid var(--line);border-radius:99px;padding:10px 15px;font-size:13px;font-family:var(--font);color:var(--ink)}
+.inputrow input:focus{outline:2px solid var(--accent-blue)}
+.send{border:none;background:var(--blue);color:#fff;border-radius:99px;width:42px;height:42px;
+  font-size:15px;cursor:pointer;flex-shrink:0}
+.send:active{transform:scale(.92)}
+
+/* ===== Notifications ===== */
+.notif{display:flex;gap:10px;background:#fff;border:1px solid var(--line);border-radius:13px;
+  padding:11px 12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.notif.unread{border-left:4px solid var(--orange)}
+.notif .ni{font-size:18px}
+.notif .nt{font-size:12px;font-weight:bold;color:var(--navy)}
+.notif .nd{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.notif .tm{font-size:9.5px;color:var(--muted-2);margin-top:4px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pitch">
+    <div class="k">BRI COLARIS · MOBILE EXPERIENCE</div>
+    <h1>Living Collateral Intelligence, di genggaman Mantri &amp; RM</h1>
+    <p>Prototipe mobile COLARIS terintegrasi ke BRISPOT. Seluruh data pada demo ini bersifat fiktif.</p>
+    <ul>
+      <li>Early warning agunan langsung ke ponsel petugas</li>
+      <li>Collateral Digital DNA per aset, selalu terbarui</li>
+      <li>AI Copilot menjawab pertanyaan dalam bahasa alami</li>
+      <li>Rekomendasi disertai reason code (Explainable AI)</li>
+    </ul>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="statusbar"><span id="clock">09.41</span><span>▮▮▮ ᯤ 87%</span></div>
+      <div class="appbar">
+        <div class="logowrap"><img id="logoImg" alt="Logo BRI"></div>
+        <span class="divider"></span>
+        <div class="t"><b>COLARIS</b><span>DI DALAM BRISPOT</span></div>
+        <button class="bell" id="bellBtn" aria-label="Notifikasi">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 3h16l-2-3Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 20a2.5 2.5 0 0 0 5 0" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span class="dot" id="bellDot">3</span></button>
+      </div>
+
+
+      <div class="content" id="content">
+
+        <!-- ============ HOME ============ -->
+        <div class="page on" id="pg-home">
+          <div class="hello">
+            <div class="avatar">IR</div>
+            <div><div class="hi">Selamat pagi,</div><div class="nm">Irvan · RM KC Pluit</div></div>
+          </div>
+
+          <div id="homeSkeleton">
+            <div class="kgrid">
+              <div class="skeleton" style="height:66px"></div>
+              <div class="skeleton" style="height:66px"></div>
+              <div class="skeleton" style="height:66px"></div>
+              <div class="skeleton" style="height:66px"></div>
+            </div>
+            <div class="skeleton" style="height:64px;margin-bottom:12px"></div>
+          </div>
+
+          <div id="homeContent" style="display:none">
+          <div class="kgrid">
+            <div class="kc"><div class="v" id="hAssets">–</div><div class="l">Agunan binaan</div></div>
+            <div class="kc alt"><div class="v" id="hValue">–</div><div class="l">Nilai portofolio</div></div>
+            <div class="kc alt"><div class="v" id="hWatch">–</div><div class="l">Watchlist</div></div>
+            <div class="kc" style="background:linear-gradient(135deg,#B14A1B,var(--orange))">
+              <div class="v" id="hAlert">–</div><div class="l">Early warning</div></div>
+          </div>
+
+          <div class="card" style="padding-bottom:6px">
+            <h3>Perlu tindakan hari ini</h3>
+            <div id="homeWarnings"></div>
+          </div>
+          </div>
+
+          <div class="card">
+            <h3>Akses cepat</h3>
+            <div class="quick">
+              <button class="q" data-go="assets"><div class="qi">📁</div><div class="ql">Daftar Agunan</div></button>
+              <button class="q" data-go="copilot"><div class="qi">💬</div><div class="ql">AI Copilot</div></button>
+              <button class="q" data-go="notif"><div class="qi">🔔</div><div class="ql">Notifikasi</div></button>
+              <button class="q" id="qSurvey"><div class="qi">🛰️</div><div class="ql">Tambah Agunan</div></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ ASSETS ============ -->
+        <div class="page" id="pg-assets">
+          <div class="search"><input id="q" type="search" placeholder="Cari agunan, lokasi..." aria-label="Cari agunan"></div>
+          <div id="assetList"></div>
+        </div>
+
+        <!-- ============ DETAIL ============ -->
+        <div class="page" id="pg-detail">
+          <div class="backrow"><button class="backbtn" id="backBtn">‹ Kembali</button></div>
+          <div class="dt-title" id="dTitle">–</div>
+          <div class="dt-sub" id="dSub">–</div>
+
+          <div class="card">
+            <h3>Valuasi · Decision Intelligence</h3>
+            <div class="valrow">
+              <div class="vv"><div class="l">NPW</div><div class="v" id="dNpw">–</div><div class="d" id="ddNpw"></div></div>
+              <div class="vv"><div class="l">Nilai Likuidasi</div><div class="v" id="dNl">–</div><div class="d flat">faktor <span id="dLiq"></span></div></div>
+              <div class="vv"><div class="l">LTV saat ini</div><div class="v" id="dLtv">–</div><div class="d" id="ddLtv"></div></div>
+              <div class="vv emph"><div class="l">Recovery Prob.</div><div class="v" id="dRec">–</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Collateral Digital DNA</h3>
+            <div class="dna-center">
+              <div id="dnaRingM"></div>
+              <div><div class="cri-num" id="dCri">–</div>
+                <div class="cri-cap">Collateral Risk Index (tinggi = berisiko)</div>
+                <div style="margin-top:6px" id="dBadge"></div></div>
+            </div>
+            <div class="minibars" id="dBars"></div>
+          </div>
+
+          <div class="card">
+            <h3>Rekomendasi · Explainable AI</h3>
+            <div id="dRecs"></div>
+            <button class="simbtn" id="btnEvent">⚡ Simulasikan event banjir di kawasan ini</button>
+            <div class="hitl-m"><b>Human-in-the-loop:</b> rekomendasi bersifat decision support. Keputusan akhir pada pejabat berwenang.</div>
+          </div>
+        </div>
+
+        <!-- ============ COPILOT ============ -->
+        <div class="page" id="pg-copilot" style="padding:0;height:100%">
+          <div class="chatwrap">
+            <div class="chat" id="chat"></div>
+            <div class="sugg" id="sugg"></div>
+            <div class="inputrow">
+              <input id="chatIn" type="text" placeholder="Tanya tentang agunan Anda..." aria-label="Ketik pertanyaan">
+              <button class="send" id="chatSend" aria-label="Kirim">➤</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ NOTIFICATIONS ============ -->
+        <div class="page" id="pg-notif">
+          <div class="card" style="background:var(--ice);border:none;padding:4px 2px 0"><h3 style="margin:0 0 8px 6px">Notifikasi &amp; Early Warning</h3></div>
+          <div id="notifList"></div>
+        </div>
+
+        <!-- ============ TAMBAH AGUNAN (LIVE DATA) ============ -->
+        <div class="page" id="pg-add">
+          <div class="backrow"><button class="backbtn" id="addBackBtn">‹ Kembali</button></div>
+          <div class="dt-title">Tambah Agunan · Data Real</div>
+          <div class="dt-sub">Masukkan alamat nyata. Skor dihitung dari data publik live.</div>
+
+          <div class="card">
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin-bottom:5px">Alamat agunan</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="addAddr" placeholder="cth: Pluit, Jakarta Utara" style="flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+              <button id="addGeoBtn" style="border:none;background:var(--blue);color:#fff;border-radius:9px;padding:9px 14px;font-family:var(--font);font-weight:bold;font-size:12px">Cari</button>
+            </div>
+            <div id="addGeoResults" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <div class="card hidden" id="addProfileCard">
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin-bottom:5px">Jenis agunan</label>
+            <select id="addType" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+              <option value="🏠|Rumah Tinggal|Properti residensial">Rumah tinggal</option>
+              <option value="🏬|Ruko|Properti komersial">Ruko / komersial</option>
+              <option value="🏭|Gudang|Properti industri">Gudang / industri</option>
+              <option value="🌾|Lahan|Lahan produktif">Tanah kosong</option>
+            </select>
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Jenis sertifikat</label>
+            <select id="addCert" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+              <option value="95">SHM</option><option value="85">SHGB</option><option value="72">HGU/Hak Pakai</option><option value="45">AJB/Girik</option>
+            </select>
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Nilai pasar (Rp Miliar)</label>
+            <input type="number" id="addNilai" value="3.0" step="0.1" min="0.1" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Plafon kredit (Rp Miliar)</label>
+            <input type="number" id="addPlafon" value="1.8" step="0.1" min="0.05" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+            <button class="simbtn" id="addRunBtn">Analisis Data Real &amp; Tambahkan</button>
+          </div>
+
+          <div class="card" id="addStepsCard" style="display:none">
+            <h3>Intelligence Engine</h3>
+            <div id="addSteps" style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--muted)"></div>
+          </div>
+          <div class="errbox hidden" id="addErr" style="background:var(--danger-bg);color:var(--danger);border-radius:9px;padding:9px 11px;font-size:12px"></div>
+        </div>
+
+      </div>
+
+      <nav class="tabbar" aria-label="Navigasi utama">
+        <button class="tab on" data-tab="home">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg>
+          <span class="lb">Beranda</span></button>
+        <button class="tab" data-tab="assets">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a1 1 0 0 1 1-1h4.5l1.5 2h10a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
+          <span class="lb">Agunan</span></button>
+        <button class="tab" data-tab="copilot">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 4V16H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>
+          <span class="lb">Copilot</span></button>
+        <button class="tab" data-tab="notif">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+          <span class="lb">Notifikasi</span></button>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<script src="/live-engine.js"></script>
+<script>
+"use strict";
+/* Logo (white) injected at build time */
+document.getElementById("logoImg").src = "data:image/png;base64,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";
+
+/* ===== Data (identik dengan simulasi desktop, disederhanakan) ===== */
+const fmtB = v => v>=1000 ? (v/1000).toFixed(2).replace(".",",")+" T" : v.toFixed(1).replace(".",",")+" M";
+const rupiah = v => "Rp " + fmtB(v);
+const COLORS = {Market:"#0054A6",Legal:"#6B4EAE",Geo:"#B7791F",Climate:"#C0455C",Economic:"#1E8E5A"};
+
+const ASSETS = [
+  {id:"A1",icon:"🏬",name:"Ruko 3 Lantai · Bekasi Timur",type:"Properti komersial",loc:"Bekasi, Jawa Barat",
+   plafon:4.2,npw0:6.8,liq:.78,floodProne:true,notes:"Kawasan niaga padat, dekat sungai",
+   scores:{Market:74,Legal:88,Geo:70,Climate:58,Economic:72}},
+  {id:"A2",icon:"🏭",name:"Gudang Logistik · Cikarang",type:"Properti industri",loc:"Cikarang, Jawa Barat",
+   plafon:18.5,npw0:31.0,liq:.72,floodProne:false,notes:"Koridor industri, akses tol",
+   scores:{Market:81,Legal:92,Geo:84,Climate:76,Economic:78}},
+  {id:"A3",icon:"🏠",name:"Rumah Tinggal · Denpasar",type:"Properti residensial",loc:"Denpasar, Bali",
+   plafon:1.6,npw0:2.9,liq:.82,floodProne:false,notes:"Kawasan hunian premium",
+   scores:{Market:86,Legal:90,Geo:88,Climate:80,Economic:84}},
+  {id:"A4",icon:"🌾",name:"Lahan Perkebunan · Kampar",type:"Lahan produktif",loc:"Kampar, Riau",
+   plafon:7.4,npw0:12.2,liq:.55,floodProne:true,notes:"Sertifikat dalam proses pemecahan",
+   scores:{Market:62,Legal:64,Geo:60,Climate:52,Economic:66}},
+  {id:"A5",icon:"🏢",name:"Ruang Kantor · Jakarta Selatan",type:"Properti komersial",loc:"Jakarta Selatan, DKI",
+   plafon:22.0,npw0:38.5,liq:.75,floodProne:false,notes:"Okupansi perkantoran melunak",
+   scores:{Market:68,Legal:94,Geo:90,Climate:82,Economic:70}},
+  {id:"A6",icon:"🏘️",name:"Klaster Perumahan · Semarang",type:"Properti residensial",loc:"Semarang, Jawa Tengah",
+   plafon:9.8,npw0:15.6,liq:.74,floodProne:true,notes:"Sebagian blok di zona rob",
+   scores:{Market:72,Legal:86,Geo:66,Climate:48,Economic:71}},
+];
+/* event banjir per-aset (dipicu tombol simulasi) */
+const floodHit = {};
+
+function model(a){
+  const s={...a.scores};
+  let npw=a.npw0;
+  const f=floodHit[a.id]||0;
+  const fm=a.floodProne?1.6:0.7;
+  npw*= (1 - f*0.035*fm);
+  s.Climate-=f*11*fm; s.Geo-=f*4*fm;
+  Object.keys(s).forEach(k=>s[k]=Math.max(5,Math.min(98,Math.round(s[k]))));
+  const nl=npw*a.liq*(1-f*0.02*(a.floodProne?1.4:0.6));
+  const avg=(s.Market+s.Legal+s.Geo+s.Climate+s.Economic)/5;
+  const cri=Math.max(2,Math.min(98,Math.round(100-avg)));
+  const ltv=a.plafon/npw*100;
+  const rec=Math.max(15,Math.min(97,Math.round(a.liq*100-cri*0.45+(s.Legal-70)*0.25)));
+  return {s,npw,nl,cri,ltv,rec};
+}
+const criBadge=c=> c<30?{cls:"b-ok",txt:"Sehat"}:c<50?{cls:"b-warn",txt:"Perlu Perhatian"}:{cls:"b-danger",txt:"Watchlist"};
+const pct=v=>v.toFixed(1).replace(".",",")+"%";
+
+/* ===== Navigation ===== */
+let currentDetail=null, prevTab="home";
+const pages=["home","assets","detail","copilot","notif","add"];
+function show(tab){
+  pages.forEach(p=>document.getElementById("pg-"+p).classList.toggle("on",p===tab));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.tab===tab));
+  document.getElementById("content").scrollTop=0;
+  if(tab!=="detail" && tab!=="add") prevTab=tab;
+  if(tab==="notif") clearUnread();
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.tab)));
+document.querySelectorAll(".q[data-go]").forEach(q=>q.addEventListener("click",()=>show(q.dataset.go)));
+document.getElementById("bellBtn").addEventListener("click",()=>show("notif"));
+document.getElementById("backBtn").addEventListener("click",()=>show(prevTab==="detail"?"assets":prevTab));
+document.getElementById("addBackBtn").addEventListener("click",()=>show("home"));
+document.getElementById("qSurvey").addEventListener("click",()=>{
+  document.getElementById("addAddr").value="";
+  document.getElementById("addGeoResults").innerHTML="";
+  document.getElementById("addProfileCard").classList.add("hidden");
+  document.getElementById("addStepsCard").style.display="none";
+  document.getElementById("addErr").classList.add("hidden");
+  addSelectedLoc=null;
+  show("add");
+});
+
+/* ===== Home ===== */
+function renderHome(){
+  let total=0,watch=0,alert=0;
+  ASSETS.forEach(a=>{const m=model(a);total+=m.npw;if(m.cri>=50)watch++;if(m.cri>=50||m.ltv>75)alert++;});
+  document.getElementById("hAssets").textContent=ASSETS.length;
+  document.getElementById("hValue").textContent=rupiah(total);
+  document.getElementById("hWatch").textContent=watch+" aset";
+  document.getElementById("hAlert").textContent=alert;
+  const hw=document.getElementById("homeWarnings");
+  const items=[];
+  ASSETS.forEach(a=>{
+    const m=model(a);
+    if(m.cri>=50) items.push({a,t:`${a.name} masuk Watchlist`,d:`CRI ${m.cri} · skor Climate ${m.s.Climate} · appraisal ulang direkomendasikan`,act:"Buka profil agunan ›"});
+    else if(m.ltv>75) items.push({a,t:`LTV ${a.name.split("·")[0].trim()} melewati ambang`,d:`LTV ${pct(m.ltv)} > 75% kebijakan`,act:"Tinjau sekarang ›"});
+  });
+  if(!items.length){
+    ASSETS.filter(x=>x.floodProne).slice(0,2).forEach(a=>{
+      items.push({a,t:`${a.name.split("·")[0].trim()} dipantau ketat`,d:`Aset berada di zona rawan banjir · monitoring citra satelit aktif`,act:"Lihat Digital DNA ›"});
+    });
+  }
+  hw.innerHTML="";
+  items.slice(0,3).forEach(it=>{
+    const div=document.createElement("div");
+    div.className="warncard";
+    div.innerHTML=`<div class="wt">${it.t}</div><div class="wd">${it.d}</div><div class="wa">${it.act}</div>`;
+    div.addEventListener("click",()=>openDetail(it.a.id));
+    hw.appendChild(div);
+  });
+}
+
+/* ===== Asset list ===== */
+function renderAssets(filter=""){
+  const el=document.getElementById("assetList");
+  el.innerHTML="";
+  ASSETS.filter(a=>(a.name+a.loc+a.type).toLowerCase().includes(filter.toLowerCase()))
+   .forEach(a=>{
+    const m=model(a),b=criBadge(m.cri);
+    const div=document.createElement("div");
+    div.className="aitem";
+    div.innerHTML=`<div class="ic">${a.icon}</div>
+      <div><div class="nm">${a.name}${a.live?' <span style="background:var(--blue);color:#fff;font-size:8px;font-weight:bold;padding:1px 5px;border-radius:99px;vertical-align:middle;margin-left:3px">LIVE</span>':''}</div><div class="loc">${a.type} · ${a.loc}</div></div>
+      <div class="right"><span class="badge ${b.cls}">${b.txt}</span><div class="cri">CRI ${m.cri} · ${rupiah(m.npw)}</div></div>`;
+    div.addEventListener("click",()=>openDetail(a.id));
+    el.appendChild(div);
+  });
+}
+document.getElementById("q").addEventListener("input",e=>renderAssets(e.target.value));
+
+/* ===== Detail ===== */
+function openDetail(id){
+  currentDetail=id;
+  const a=ASSETS.find(x=>x.id===id), m=model(a), b=criBadge(m.cri);
+  document.getElementById("dTitle").textContent=a.name;
+  document.getElementById("dSub").textContent=`${a.type} · ${a.loc} · ${a.notes} · Plafon ${rupiah(a.plafon)}`+(a.live?" · Data publik live":"");
+  document.getElementById("dNpw").textContent=rupiah(m.npw);
+  const dd=document.getElementById("ddNpw");
+  const delta=(m.npw-a.npw0)/a.npw0*100;
+  if(Math.abs(delta)<0.05){dd.textContent="stabil";dd.className="d flat";}
+  else{dd.textContent=(delta>0?"▲ +":"▼ ")+delta.toFixed(1).replace(".",",")+"%";dd.className="d "+(delta>0?"up":"down");}
+  document.getElementById("dNl").textContent=rupiah(m.nl);
+  document.getElementById("dLiq").textContent=Math.round(a.liq*100)+"%";
+  document.getElementById("dLtv").textContent=pct(m.ltv);
+  const dl=document.getElementById("ddLtv");
+  if(m.ltv>75){dl.textContent="melewati ambang 75%";dl.className="d down";}
+  else{dl.textContent="dalam batas kebijakan";dl.className="d up";}
+  document.getElementById("dRec").textContent=m.rec+"%";
+  document.getElementById("dCri").textContent=m.cri;
+  document.getElementById("dBadge").innerHTML=`<span class="badge ${b.cls}">${b.txt}</span>`;
+  renderRing(m);
+  document.getElementById("dBars").innerHTML=Object.keys(COLORS).map(k=>
+    `<div class="mb"><div class="bt"><b>${k}</b><span>${m.s[k]}/100</span></div>
+     <div class="bar"><i style="width:${m.s[k]}%;background:${COLORS[k]}"></i></div></div>`).join("");
+  const recs=[];
+  if(m.cri>=50)recs.push({hi:1,t:"Masukkan ke watchlist & appraisal ulang 30 hari",w:`CRI ${m.cri} > ambang 50`});
+  if(m.ltv>75)recs.push({hi:1,t:"Tinjau LTV & pertimbangkan agunan tambahan",w:`LTV ${pct(m.ltv)} > 75%`});
+  if(m.s.Climate<55)recs.push({hi:0,t:"Verifikasi kondisi via citra satelit resolusi tinggi",w:`Skor Climate ${m.s.Climate}`});
+  if(m.s.Legal<70)recs.push({hi:0,t:"Prioritaskan penyelesaian dokumen legal",w:`Skor Legal ${m.s.Legal}`});
+  if(!recs.length)recs.push({hi:0,t:"Monitoring digital berkala, tanpa appraisal ulang",w:`Semua skor sehat · risk-based appraisal`});
+  document.getElementById("dRecs").innerHTML=recs.map((r,i)=>
+    `<div class="rec ${r.hi?"hi":""}"><span class="no">${String(i+1).padStart(2,"0")}</span>
+     <span><b>${r.t}</b><div class="why">Reason code: ${r.w}</div></span></div>`).join("");
+  const btn=document.getElementById("btnEvent");
+  btn.textContent = floodHit[id] ? "↺ Pulihkan kondisi (hapus event)" : "⚡ Simulasikan event banjir di kawasan ini";
+  show("detail");
+}
+document.getElementById("btnEvent").addEventListener("click",()=>{
+  const id=currentDetail, a=ASSETS.find(x=>x.id===id);
+  if(floodHit[id]){ delete floodHit[id];
+    pushNotif("✅","Kondisi dipulihkan",`Event banjir pada ${a.name} dihapus dari simulasi. Skor kembali ke baseline.`,false);
+  } else { floodHit[id]=3;
+    pushNotif("🌊",`Early warning: genangan terdeteksi`,`Satellite Intelligence (SAR) mendeteksi genangan di sekitar ${a.name}. Skor Climate diturunkan otomatis; NPW & LTV dihitung ulang.`,true);
+  }
+  renderHome(); renderAssets(document.getElementById("q").value); openDetail(id);
+});
+
+/* ===== DNA ring (mobile size) ===== */
+function polar(cx,cy,r,d){const a=d*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+function arc(cx,cy,r,a1,a2,color,w){
+  if(a2-a1<0.5)return"";
+  const[x1,y1]=polar(cx,cy,r,a1),[x2,y2]=polar(cx,cy,r,a2);
+  return`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${(a2-a1)>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+function renderRing(m){
+  const keys=Object.keys(COLORS),R=46,C=60,sw=9,gap=6,seg=(360-5*gap)/5;
+  let deg=-90,s="";
+  keys.forEach(k=>{
+    s+=arc(C,C,R,deg,deg+seg,"#EAF2FA",sw);
+    s+=arc(C,C,R,deg,deg+seg*m.s[k]/100,COLORS[k],sw);
+    deg+=seg+gap;
+  });
+  document.getElementById("dnaRingM").innerHTML=
+   `<svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Cincin Digital DNA">${s}
+    <text x="60" y="58" text-anchor="middle" font-size="9" fill="#6B7280" font-family="Arial">DNA</text>
+    <text x="60" y="72" text-anchor="middle" font-size="11" font-weight="bold" fill="#003A73" font-family="Arial">${currentDetail||""}</text></svg>`;
+}
+
+/* ===== Notifications ===== */
+let unread=0;
+const notifs=[];
+function pushNotif(icon,title,desc,isUnread){
+  notifs.unshift({icon,title,desc,tm:"Baru saja",unread:isUnread});
+  if(isUnread){unread++;updateBell();}
+  renderNotifs();
+}
+function clearUnread(){unread=0;notifs.forEach(n=>n.unread=false);updateBell();renderNotifs();}
+function updateBell(){
+  const d=document.getElementById("bellDot");
+  d.textContent=unread; d.style.display=unread?"block":"none";
+}
+function renderNotifs(){
+  document.getElementById("notifList").innerHTML=notifs.map(n=>
+    `<div class="notif ${n.unread?"unread":""}"><div class="ni">${n.icon}</div>
+     <div><div class="nt">${n.title}</div><div class="nd">${n.desc}</div><div class="tm">${n.tm}</div></div></div>`).join("");
+}
+/* seed */
+[["🌊","Early warning: curah hujan ekstrem","Climate Intelligence memantau prakiraan hujan ekstrem 3 hari ke depan di Semarang; 1 aset rawan rob berada dalam radius terdampak.","1 jam lalu",true],
+ ["📉","Transaksi pembanding baru","Market Intelligence menemukan 3 transaksi pembanding baru radius 2 km dari Ruko Bekasi Timur; NPW diperbarui otomatis.","3 jam lalu",true],
+ ["📄","Pengecekan sertifikat selesai","Legal Intelligence: tidak ditemukan catatan blokir baru pada 6 agunan binaan Anda.","Kemarin",true],
+ ["🛰️","Citra satelit diperbarui","Satellite Intelligence menyelesaikan siklus pemantauan mingguan; tidak ada perubahan struktur fisik terdeteksi.","Kemarin",false],
+].forEach(([i,t,d,tm,u])=>{notifs.push({icon:i,title:t,desc:d,tm,unread:u});if(u)unread++;});
+updateBell();renderNotifs();
+
+/* ===== Copilot ===== */
+const chat=document.getElementById("chat");
+function addBub(cls,html){
+  const d=document.createElement("div");
+  d.className="bub "+cls; d.innerHTML=html;
+  chat.appendChild(d); chat.scrollTop=chat.scrollHeight;
+  return d;
+}
+function answer(q){
+  const ql=q.toLowerCase();
+  const withRc=(txt,rc)=>txt+`<span class="rc">Reason code: ${rc}</span>`;
+  const wl=ASSETS.map(a=>({a,m:model(a)})).filter(x=>x.m.cri>=50);
+  if(/watchlist|berisiko|risiko tinggi|perlu perhatian/.test(ql)){
+    if(wl.length) return withRc(`Saat ini <b>${wl.length} aset</b> berstatus Watchlist: ${wl.map(x=>x.a.name).join("; ")}. Saya sarankan appraisal ulang dalam 30 hari.`, wl.map(x=>`${x.a.id} CRI ${x.m.cri}`).join(" · "));
+    const pp=ASSETS.map(a=>({a,m:model(a)})).sort((x,y)=>y.m.cri-x.m.cri)[0];
+    return withRc(`Tidak ada aset berstatus Watchlist. Aset dengan risiko relatif tertinggi adalah <b>${pp.a.name}</b> (CRI ${pp.m.cri}, status ${criBadge(pp.m.cri).txt}) karena ${pp.a.notes.toLowerCase()}.`,`CRI tertinggi portofolio = ${pp.m.cri}`);
+  }
+  if(/banjir|iklim|climate|rob|hujan/.test(ql)){
+    const fp=ASSETS.filter(a=>a.floodProne);
+    return withRc(`<b>${fp.length} aset</b> berada di zona rawan banjir: ${fp.map(a=>a.name.split("·")[0].trim()).join(", ")}. Satellite Intelligence memantau genangan berbasis SAR secara berkala; skor Climate akan turun otomatis saat genangan terdeteksi.`,`floodProne=true pada ${fp.map(a=>a.id).join(", ")}`);
+  }
+  if(/ltv/.test(ql)){
+    const rows=ASSETS.map(a=>{const m=model(a);return `${a.id} ${pct(m.ltv)}`;});
+    const over=ASSETS.map(a=>({a,m:model(a)})).filter(x=>x.m.ltv>75);
+    return withRc(`LTV portofolio Anda: ${rows.join(" · ")}. ${over.length?`<b>${over.length} aset melewati ambang 75%</b>: ${over.map(x=>x.a.name).join("; ")}.`:"Seluruhnya masih dalam batas kebijakan 75%."}`,`Ambang kebijakan LTV = 75%`);
+  }
+  if(/bekasi|ruko/.test(ql)){const a=ASSETS[0],m=model(a);
+    return withRc(`<b>${a.name}</b>: NPW ${rupiah(m.npw)}, Nilai Likuidasi ${rupiah(m.nl)}, LTV ${pct(m.ltv)}, CRI ${m.cri} (${criBadge(m.cri).txt}). Catatan: ${a.notes.toLowerCase()}; skor Climate ${m.s.Climate} karena kedekatan dengan sungai.`,`CDNA-${a.id}-2026 · pembaruan otomatis`);}
+  if(/semarang|klaster/.test(ql)){const a=ASSETS[5],m=model(a);
+    return withRc(`<b>${a.name}</b>: NPW ${rupiah(m.npw)}, CRI ${m.cri} (${criBadge(m.cri).txt}). Skor Climate ${m.s.Climate} adalah yang terendah di portofolio Anda karena sebagian blok berada di zona rob.`,`Skor Climate ${m.s.Climate} · zona rob`);}
+  if(/rekomendasi|saran|tindakan|apa yang harus/.test(ql)){
+    return withRc(`Prioritas minggu ini: (1) pantau aset rawan banjir menjelang musim hujan, (2) selesaikan dokumen legal Lahan Kampar (skor Legal ${model(ASSETS[3]).s.Legal}), (3) pertahankan monitoring digital untuk aset sehat tanpa kunjungan fisik.`,`Prescriptive Intelligence · risk-based appraisal`);
+  }
+  if(/recovery/.test(ql)){
+    const rows=ASSETS.map(a=>{const m=model(a);return `${a.id} ${m.rec}%`;});
+    return withRc(`Estimasi Recovery Probability: ${rows.join(" · ")}. Nilai terendah pada Lahan Kampar karena faktor likuidasi lahan yang lebih rendah dan dokumen legal yang belum tuntas.`,`rec = f(faktor likuidasi, CRI, skor Legal)`);
+  }
+  return `Saya dapat membantu soal portofolio agunan Anda. Coba tanyakan: "aset mana yang berisiko?", "bagaimana LTV saya?", "aset rawan banjir?", atau sebut nama asetnya, misalnya "profil ruko Bekasi".`;
+}
+function ask(q){
+  if(!q.trim())return;
+  addBub("me",q);
+  document.getElementById("chatIn").value="";
+  const t=document.createElement("div");t.className="typing";t.innerHTML="<i></i><i></i><i></i>";
+  chat.appendChild(t);chat.scrollTop=chat.scrollHeight;
+  setTimeout(()=>{t.remove();addBub("ai",answer(q));},700);
+}
+document.getElementById("chatSend").addEventListener("click",()=>ask(document.getElementById("chatIn").value));
+document.getElementById("chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")ask(e.target.value);});
+const SUGGS=["Aset mana yang berisiko?","Bagaimana LTV saya?","Aset rawan banjir?","Profil ruko Bekasi"];
+document.getElementById("sugg").innerHTML=SUGGS.map(s=>`<button class="sg">${s}</button>`).join("");
+document.querySelectorAll(".sg").forEach(b=>b.addEventListener("click",()=>ask(b.textContent)));
+addBub("ai",`Halo Irvan 👋 Saya <b>COLARIS Copilot</b>. Saya memantau 6 agunan binaan Anda secara berkelanjutan. Ada yang bisa saya bantu?`);
+
+/* ===== Clock ===== */
+function tick(){
+  const n=new Date();
+  document.getElementById("clock").textContent=
+    String(n.getHours()).padStart(2,"0")+"."+String(n.getMinutes()).padStart(2,"0");
+}
+tick();setInterval(tick,15000);
+
+/* ===== Tambah Agunan (live data) ===== */
+const LIQ_BY_TYPE_M = { "Rumah Tinggal":0.80, "Ruko":0.78, "Gudang":0.72, "Lahan":0.60 };
+let addSelectedLoc=null;
+
+async function addGeocode(){
+  const q=document.getElementById("addAddr").value.trim();
+  if(!q) return;
+  const box=document.getElementById("addGeoResults");
+  box.innerHTML='<div style="font-size:11px;color:var(--muted-2)">Mencari lokasi...</div>';
+  document.getElementById("addProfileCard").classList.add("hidden");
+  try{
+    const results = await ColarisLiveEngine.geocodeSearch(q);
+    if(!results.length){ box.innerHTML='<div style="font-size:11px;color:var(--muted-2)">Tidak ditemukan.</div>'; return; }
+    box.innerHTML="";
+    results.forEach(r=>{
+      const d=document.createElement("div");
+      d.style.cssText="border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px;cursor:pointer;background:var(--ice)";
+      d.innerHTML=`<b style="color:var(--navy);display:block">${r.label}</b>`;
+      d.addEventListener("click",()=>{
+        Array.from(box.children).forEach(c=>c.style.borderColor="var(--line)");
+        d.style.borderColor="var(--blue)";
+        addSelectedLoc=r;
+        document.getElementById("addProfileCard").classList.remove("hidden");
+      });
+      box.appendChild(d);
+    });
+  }catch(e){
+    box.innerHTML=`<div style="font-size:11px;color:var(--danger)">Geocoding gagal: ${e.message}</div>`;
+  }
+}
+document.getElementById("addGeoBtn").addEventListener("click", addGeocode);
+document.getElementById("addAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") addGeocode(); });
+
+const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine", osm:"Geo & Market Engine"};
+function addRenderSteps(state){
+  const box=document.getElementById("addSteps");
+  document.getElementById("addStepsCard").style.display="block";
+  box.innerHTML = Object.keys(ADD_STEP_LABELS).map(k=>{
+    const s = state[k] || {state:"pending"};
+    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="loading"?"…":"○";
+    const color = s.state==="done"?"var(--ok)":s.state==="fail"?"var(--danger)":"var(--muted)";
+    return `<div style="display:flex;gap:8px"><span style="color:${color};font-weight:bold;width:14px">${icon}</span><span>${s.note || ADD_STEP_LABELS[k]}</span></div>`;
+  }).join("");
+}
+
+document.getElementById("addRunBtn").addEventListener("click", async ()=>{
+  if(!addSelectedLoc) return;
+  const btn=document.getElementById("addRunBtn");
+  btn.disabled=true; btn.textContent="Menarik data real...";
+  document.getElementById("addErr").classList.add("hidden");
+  const stepState={};
+  addRenderSteps(stepState);
+  try{
+    const R = await ColarisLiveEngine.fetchLiveSignals(addSelectedLoc.lat, addSelectedLoc.lon, (k,s,n)=>{
+      stepState[k]={state:s, note:n}; addRenderSteps(stepState);
+    });
+    const certScore = parseInt(document.getElementById("addCert").value);
+    const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
+    const [icon,shortName,typeLabel] = document.getElementById("addType").value.split("|");
+    const nilai = Math.max(0.1, parseFloat(document.getElementById("addNilai").value)||0.1);
+    const plafon = Math.max(0.05, parseFloat(document.getElementById("addPlafon").value)||0.05);
+    const liq = LIQ_BY_TYPE_M[shortName] || 0.72;
+    const newId = "LIVE" + (ASSETS.filter(a=>a.live).length+1);
+
+    const newAsset = {
+      id:newId, icon, name: shortName+" · "+addSelectedLoc.label, type:typeLabel,
+      loc: addSelectedLoc.full.split(",").slice(1,3).join(",").trim(),
+      plafon, npw0:nilai, liq, scores:scored.scores,
+      floodProne:scored.floodProne, notes: scored.reasons[0] || "Data real-time, tanpa catatan risiko signifikan",
+      live:true,
+    };
+    ASSETS.push(newAsset);
+
+    renderHome(); renderAssets(document.getElementById("q").value);
+    openDetail(newId);
+  }catch(e){
+    document.getElementById("addErr").textContent = "Gagal menganalisis: " + e.message;
+    document.getElementById("addErr").classList.remove("hidden");
+  }finally{
+    btn.disabled=false; btn.textContent="Analisis Data Real & Tambahkan";
+  }
+});
+
+/* ===== Boot ===== */
+renderHome();renderAssets();
+setTimeout(()=>{
+  const sk=document.getElementById("homeSkeleton"), ct=document.getElementById("homeContent");
+  if(sk) sk.style.display="none";
+  if(ct) ct.style.display="block";
+},900);
+</script>
+</body>
+</html>

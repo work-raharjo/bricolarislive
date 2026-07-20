@@ -11,6 +11,7 @@ const MUTED = "#6B7686";
 const LINE = "#E1E8F1";
 const ICE = "#F4F8FC";
 const ORANGE = "#F0691E";
+const LORANGE_BG = "#FDEEE3";
 
 const SOURCES = [
   {
@@ -209,6 +210,87 @@ export default function DocsPage() {
               </tbody>
             </table>
           </div>
+        </Section>
+
+        <Section title="Cara Menghitung Recovery Probability">
+          <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "#3A4553", marginBottom: 16 }}>
+            Recovery Probability adalah estimasi peluang bank memulihkan nilai kredit dari
+            agunan seandainya terjadi gagal bayar. Dihitung dari tiga komponen:
+          </p>
+
+          <div
+            style={{
+              background: ICE,
+              border: `1px solid ${LINE}`,
+              borderRadius: 10,
+              padding: "16px 18px",
+              fontFamily: "monospace",
+              fontSize: 12.5,
+              color: NAVY,
+              marginBottom: 16,
+              overflowX: "auto",
+            }}
+          >
+            Recovery Probability = clamp( 15%, 97%,{" "}
+            <br />
+            &nbsp;&nbsp;(Faktor Likuiditas x 100)
+            <br />
+            &nbsp;&nbsp;{"-"} (Collateral Risk Index x 0,45)
+            <br />
+            &nbsp;&nbsp;{"+"} ((Skor Legal {"-"} 70) x 0,25)
+            <br />
+            )
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, lineHeight: 1.7, color: "#3A4553" }}>
+            <div>
+              <b style={{ color: NAVY }}>Faktor Likuiditas</b>, seberapa cepat jenis agunan
+              biasanya bisa dijual: Rumah Tinggal 80%, Ruko/Komersial 78%, Gudang/Industri 72%,
+              Lahan 60%. Ini titik awal (base) sebelum penyesuaian risiko.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>Collateral Risk Index (CRI)</b>, skor gabungan dari
+              seluruh engine (0 sampai 100, makin tinggi makin berisiko). Setiap 1 poin kenaikan
+              CRI menurunkan Recovery Probability sebesar 0,45 poin, jadi CRI yang tinggi
+              (misalnya karena elevasi rendah, gempa, atau kualitas udara buruk) langsung
+              mengurangi ekspektasi pemulihan.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>Skor Legal</b>, dari jenis sertifikat (SHM 95, SHGB 85,
+              HGU/Hak Pakai 72, AJB/Girik 45). Angka 70 dipakai sebagai titik netral, jadi
+              sertifikat di atas SHGB sedikit menambah Recovery Probability, dan di bawahnya
+              sedikit mengurangi karena proses eksekusi jaminan lebih rumit tanpa SHM/SHGB.
+            </div>
+            <div>
+              Hasil akhir dibatasi (di-<i>clamp</i>) antara 15% dan 97%, karena dalam praktiknya
+              recovery hampir tidak pernah benar-benar 0% (agunan biasanya masih punya nilai
+              sisa) atau 100% (selalu ada biaya, waktu, dan ketidakpastian proses eksekusi).
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              background: LORANGE_BG,
+              borderRadius: 10,
+              padding: "12px 16px",
+              fontSize: 12.5,
+              color: "#3A4553",
+              lineHeight: 1.6,
+            }}
+          >
+            <b style={{ color: NAVY }}>Contoh:</b> Ruko (likuiditas 78%) dengan sertifikat SHM
+            (skor Legal 95) dan CRI 34 akan dihitung sebagai: (78) {"-"} (34 x 0,45) + ((95{" "}
+            {"-"}
+            70) x 0,25) = 78 {"-"} 15,3 + 6,25 = <b>69%</b>.
+          </div>
+
+          <p style={{ fontSize: 12, color: MUTED, marginTop: 14, lineHeight: 1.6 }}>
+            Ini adalah model heuristik sederhana untuk keperluan demonstrasi, bukan model LGD
+            (Loss Given Default) formal Basel. Bank sungguhan memerlukan data historis recovery
+            rate aktual per jenis agunan dan wilayah untuk mengkalibrasi model yang defensible
+            secara regulasi.
+          </p>
         </Section>
 
         <Section title="Keterbatasan yang Jujur Kami Akui">

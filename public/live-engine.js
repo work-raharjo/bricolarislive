@@ -117,15 +117,44 @@
     };
   }
 
+  // GDELT's DOC 2.0 API does not reliably send CORS headers for direct browser fetch, which
+  // shows up as a generic "Load failed"/"Failed to fetch" error. Try a direct call first, then
+  // fall back to a public CORS proxy that just relays the response with proper headers added.
+  const CORS_PROXIES = [
+    (url) => url, // try direct first (works fine from some networks/browsers)
+    (url) => "https://corsproxy.io/?url=" + encodeURIComponent(url),
+    (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+  ];
+  async function fetchViaCorsProxy(url, timeoutMs) {
+    let lastErr = null;
+    for (const wrap of CORS_PROXIES) {
+      try { return await fetchJson(wrap(url), {}, timeoutMs || 12000); }
+      catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("Semua proxy CORS gagal");
+  }
+
   // GDELT Project (Global Database of Events, Language, and Tone): recent news volume and
   // average tone/sentiment for a place name. No API key needed. Tone is GDELT's own linguistic
-  // scoring (roughly -10 very negative to +10 very positive), not an LLM summary.
+  // scoring (roughly -10 very negative to +10 very positive), not an LLM summary. The article
+  // list and tone timeline are fetched independently, so if one fails the other can still return.
   async function fetchMediaSentiment(placeName) {
     const q = encodeURIComponent(`"${placeName}"`);
-    const [artData, toneData] = await Promise.all([
-      fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=10&timespan=30d&format=json&sort=hybridrel`, {}, 15000),
-      fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinetone&timespan=30d&format=json`, {}, 15000),
+    const artUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=10&timespan=30d&format=json&sort=hybridrel`;
+    const toneUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinetone&timespan=30d&format=json`;
+
+    const [artResult, toneResult] = await Promise.allSettled([
+      fetchViaCorsProxy(artUrl, 15000),
+      fetchViaCorsProxy(toneUrl, 15000),
     ]);
+
+    if (artResult.status === "rejected" && toneResult.status === "rejected") {
+      throw new Error("GDELT tidak dapat diakses (CORS/jaringan)");
+    }
+
+    const artData = artResult.status === "fulfilled" ? artResult.value : null;
+    const toneData = toneResult.status === "fulfilled" ? toneResult.value : null;
+
     const articles = (artData && artData.articles) || [];
     let avgTone = null;
     try {
@@ -136,9 +165,10 @@
       }
     } catch (e) {}
     return {
-      articleCount: articles.length,
+      articleCount: artData ? articles.length : null,
       avgTone,
       topArticles: articles.slice(0, 5).map(a => ({ title: a.title, domain: a.domain, date: a.seendate })),
+      partial: artResult.status === "rejected" || toneResult.status === "rejected",
     };
   }
 
@@ -233,9 +263,10 @@
       if (!placeName) throw new Error("nama lokasi tidak tersedia");
       const media = await fetchMediaSentiment(placeName);
       R.mediaArticles = media.articleCount; R.mediaTone = media.avgTone; R.mediaTop = media.topArticles;
+      const partialNote = media.partial ? " (sebagian data)" : "";
       step("media", "done", media.articleCount === 0
-        ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)`
-        : `${media.articleCount} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)`);
+        ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
+        : `${media.articleCount != null ? media.articleCount : "?"} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)${partialNote}`);
     } catch (e) { step("media", "fail", "Media Intelligence Engine (GDELT) gagal: " + e.message); }
 
     step("fire", "loading");

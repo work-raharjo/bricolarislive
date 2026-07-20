@@ -305,6 +305,70 @@ export default function DocsPage() {
           </p>
         </Section>
 
+        <Section title="Kenapa Pakai Pendekatan Basel?">
+          <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "#3A4553", marginBottom: 14 }}>
+            Formula sebelumnya (kombinasi linear faktor likuiditas, CRI, dan skor Legal)
+            terlihat proporsional tapi tidak berbasis prinsip apa pun, sehingga sulit
+            dipertanggungjawabkan kalau ditanya "kenapa koefisiennya segini?". Pendekatan
+            Basel dipilih karena empat alasan konkret:
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13, lineHeight: 1.7, color: "#3A4553" }}>
+            <div>
+              <b style={{ color: NAVY }}>1. Haircut adalah mekanisme asli Basel, bukan analogi.</b>{" "}
+              Dalam Comprehensive Approach untuk Credit Risk Mitigation, Basel Committee
+              secara literal menghitung nilai agunan yang diakui dengan memotongnya memakai
+              haircut (simbol H<sub>c</sub> pada dokumen Basel), disesuaikan dengan
+              volatilitas historis kelas aset. "Recovery = 100% {"-"} haircut" bukan analogi
+              yang kami buat, itu memang cara bank menghitung nilai efektif agunan.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>2. Tiap komponen haircut dipetakan ke prinsip Basel yang spesifik.</b>{" "}
+              Haircut dasar per jenis agunan mencerminkan kelas aset yang punya volatilitas
+              historis berbeda (properti dianggap lebih stabil dari lahan kosong). Tambahan
+              haircut dari Skor Legal mencerminkan syarat <i>legal certainty</i> yang eksplisit
+              disyaratkan Basel, bukan kepastian hukum yang lemah otomatis mengurangi nilai
+              agunan yang diakui. Tambahan haircut dari CRI menggantikan kalibrasi volatilitas
+              harga historis Basel dengan sinyal risiko real-time (iklim, gempa, ekonomi,
+              pasar) sebagai proxy, karena kami tidak punya data historis recovery rate BRI.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>3. Konsisten dengan proposal COLARIS itu sendiri.</b>{" "}
+              Bagian kepatuhan proposal sudah menyebut "prinsip Basel Committee mengenai
+              manajemen risiko kredit". Kalau perhitungan Recovery Probability tetap memakai
+              formula bebas, klaim itu jadi tidak tercermin di implementasinya. Sekarang
+              perhitungannya benar-benar merefleksikan prinsip yang disebut.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>4. Lebih mudah diaudit dan dipertahankan.</b>{" "}
+              Setiap angka pada formula punya rujukan konseptual yang bisa dijelaskan ke
+              pihak manajemen risiko atau regulator, dibanding koefisien yang dipilih karena
+              "kelihatan proporsional".
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              background: LORANGE_BG,
+              borderRadius: 10,
+              padding: "12px 16px",
+              fontSize: 12.5,
+              color: "#3A4553",
+              lineHeight: 1.6,
+            }}
+          >
+            <b style={{ color: NAVY }}>Yang tetap jujur perlu diakui:</b> ini adaptasi
+            struktural dari logika Basel, bukan implementasi tabel haircut supervisor Basel
+            yang literal. Basel mengkalibrasi haircut dari data volatilitas historis riil per
+            kelas aset dan periode holding tertentu; kami tidak punya akses ke data itu,
+            sehingga haircut dasar per jenis agunan diperkirakan manual dan CRI dipakai
+            sebagai pengganti volatilitas dinamis. Bank sungguhan tetap perlu mengkalibrasi
+            ulang dengan data historis recovery rate aktual untuk membuat model ini
+            defensible secara regulasi.
+          </div>
+        </Section>
+
         <Section title="Keterbatasan yang Jujur Kami Akui">
           <ul style={{ paddingLeft: 20, fontSize: 13.5, lineHeight: 1.9, color: "#3A4553" }}>
             <li>

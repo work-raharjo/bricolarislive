@@ -26,9 +26,15 @@ export async function GET(req: NextRequest) {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 15000);
-    const res = await fetch(gdeltUrl, { signal: ctl.signal });
+    const res = await fetch(gdeltUrl, {
+      signal: ctl.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "application/json,text/plain,*/*",
+      },
+    });
     clearTimeout(t);
-
     if (!res.ok) {
       return NextResponse.json({ error: `GDELT HTTP ${res.status}` }, { status: 502 });
     }

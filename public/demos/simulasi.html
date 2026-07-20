@@ -307,10 +307,12 @@
       <select id="liveCert" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
         <option value="95">SHM</option><option value="85">SHGB</option><option value="72">HGU/Hak Pakai</option><option value="45">AJB/Girik</option>
       </select>
-      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Estimasi nilai pasar (Rp Juta)</label>
-      <input type="number" id="liveNilai" value="3000" step="50" min="50" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
-      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Plafon kredit (Rp Juta)</label>
-      <input type="number" id="livePlafon" value="1800" step="50" min="25" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Estimasi nilai pasar (Rp)</label>
+      <input type="number" id="liveNilai" value="3000000000" step="10000000" min="10000000" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+      <div style="font-family:Arial;font-size:10px;color:#9CA3AF;margin-top:3px">cth: 3000000000 untuk Rp 3 Miliar</div>
+      <label style="display:block;font-family:Arial;font-size:11px;font-weight:bold;color:#003A73;margin:10px 0 5px">Plafon kredit (Rp)</label>
+      <input type="number" id="livePlafon" value="1800000000" step="10000000" min="5000000" style="width:100%;border:1px solid #DCE5F0;border-radius:8px;padding:9px 11px;font-family:Arial;font-size:13px">
+      <div style="font-family:Arial;font-size:10px;color:#9CA3AF;margin-top:3px">cth: 1800000000 untuk Rp 1,8 Miliar</div>
 
       <button id="liveRunBtn" style="width:100%;margin-top:16px;border:none;background:#F37021;color:#fff;border-radius:10px;padding:11px;font-family:Arial;font-weight:bold;font-size:13px;cursor:pointer">Analisis Data Real &amp; Tambahkan</button>
     </div>
@@ -324,8 +326,11 @@
 <script>
 "use strict";
 /* ================= Data ================= */
-// v is stored internally in Miliar (existing convention); display everything in Juta Rupiah.
-const fmtB = v => (v*1000).toLocaleString("id-ID",{maximumFractionDigits:0}) + " juta";
+// v is stored internally in Miliar.
+const fmtB = v => {
+  if (v >= 1000) return (v/1000).toFixed(2).replace(".",",") + " T";
+  return v.toFixed(1).replace(".",",") + " M";
+};
 const rupiah = v => "Rp " + fmtB(v);
 
 const ENGINE_COLORS = {
@@ -781,9 +786,9 @@ document.getElementById("liveRunBtn").addEventListener("click", async ()=>{
     const certScore = parseInt(document.getElementById("liveCert").value);
     const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
     const [icon,shortName,typeLabel] = document.getElementById("liveType").value.split("|");
-    const nilaiJuta = Math.max(50, parseFloat(document.getElementById("liveNilai").value)||50);
-    const plafonJuta = Math.max(25, parseFloat(document.getElementById("livePlafon").value)||25);
-    const nilai = nilaiJuta/1000, plafon = plafonJuta/1000;
+    const nilaiRp = Math.max(10000000, parseFloat(document.getElementById("liveNilai").value)||10000000);
+    const plafonRp = Math.max(5000000, parseFloat(document.getElementById("livePlafon").value)||5000000);
+    const nilai = nilaiRp/1e9, plafon = plafonRp/1e9;
     const liq = LIQ_BY_TYPE[shortName] || 0.72;
     const newId = "LIVE" + (ASSETS.filter(a=>a.live).length+1);
     const shortLoc = liveSelectedLoc.label;

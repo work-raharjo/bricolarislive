@@ -141,10 +141,12 @@ footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:v
         <option value="72">HGU / Hak Pakai</option>
         <option value="45">AJB / Girik / belum bersertifikat</option>
       </select>
-      <label for="nilai">Estimasi nilai pasar (Rp juta)</label>
-      <input type="number" id="nilai" value="2500" min="50">
-      <label for="plafon">Plafon / outstanding kredit (Rp juta)</label>
-      <input type="number" id="plafon" value="1500" min="10">
+      <label for="nilai">Estimasi nilai pasar (Rp)</label>
+      <input type="number" id="nilai" value="2500000000" step="10000000" min="10000000">
+      <div class="hint">cth: 2500000000 untuk Rp 2,5 Miliar</div>
+      <label for="plafon">Plafon / outstanding kredit (Rp)</label>
+      <input type="number" id="plafon" value="1500000000" step="10000000" min="5000000">
+      <div class="hint">cth: 1500000000 untuk Rp 1,5 Miliar</div>
 
       <button class="btn btn-orange btn-block" id="btnRun" disabled>Analisis dengan data real</button>
       <div class="errbox hidden" id="errBox"></div>
@@ -212,7 +214,7 @@ document.getElementById("logoImg").src = "data:image/png;base64,iVBORw0KGgoAAAAN
 /* ================= helpers ================= */
 const $ = id => document.getElementById(id);
 const fmt = n => n==null?"n/a":Number(n).toLocaleString("id-ID",{maximumFractionDigits:1});
-const fmtRp = jt => "Rp " + jt.toLocaleString("id-ID",{maximumFractionDigits:0}) + " juta";
+const fmtRp = jt => "Rp " + (jt>=1000 ? (jt/1000).toLocaleString("id-ID",{maximumFractionDigits:2})+" M" : jt.toLocaleString("id-ID",{maximumFractionDigits:0})+" jt");
 function haversine(lat1,lon1,lat2,lon2){
   const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
@@ -365,8 +367,8 @@ async function runAnalysis(){
 
 /* ================= scoring (transparent) ================= */
 function computeAndRender(R){
-  const nilai=Math.max(50,parseFloat($("nilai").value)||0);
-  const plafon=Math.max(10,parseFloat($("plafon").value)||0);
+  const nilai=Math.max(10, (Math.max(10000000,parseFloat($("nilai").value)||10000000))/1e6);
+  const plafon=Math.max(5, (Math.max(5000000,parseFloat($("plafon").value)||5000000))/1e6);
   const liq=parseFloat($("ctype").selectedOptions[0].dataset.liq);
   const legal=parseInt($("cert").value);
   const reasons=[];

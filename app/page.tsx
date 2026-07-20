@@ -105,7 +105,7 @@ export default function Home() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
             <Credit name="AR Risqi Herlambang Raharjo" role="Regulatory and Spectrum Management, IT DC Infrastructure and Operation" />
             <Credit name="Bagas Kurniawan" role="Chief Information Security Officer (CISO) Group" />
-            <Credit name="Jessica Anastasya Octavia" role="Retail Transaction Group" />
+            <Credit name="Jessica Olivia Anastasya" role="Retail Transaction Group" />
           </div>
         </div>
       </div>

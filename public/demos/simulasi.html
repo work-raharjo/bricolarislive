@@ -324,10 +324,8 @@
 <script>
 "use strict";
 /* ================= Data ================= */
-const fmtB = v => {
-  if (v >= 1000) return (v/1000).toFixed(2).replace(".",",") + " T";
-  return v.toFixed(1).replace(".",",") + " M";
-};
+// v is stored internally in Miliar (existing convention); display everything in Juta Rupiah.
+const fmtB = v => (v*1000).toLocaleString("id-ID",{maximumFractionDigits:0}) + " juta";
 const rupiah = v => "Rp " + fmtB(v);
 
 const ENGINE_COLORS = {

@@ -125,7 +125,7 @@ export default function DocsPage() {
           Dari mana data ini diambil, dan bagaimana aplikasi ini bekerja
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.7, color: "#3A4553", maxWidth: 720 }}>
-          BRI COLARIS Live berbeda dari kebanyakan demo AI karena tidak memakai data fiktif
+          BRI COLARIS Live berbeda dari kebanyakan demo AI karena tidak memakai dummy data
           yang sudah disiapkan sebelumnya. Setiap kali analisis dijalankan, aplikasi menarik
           data nyata dari sejumlah sumber publik saat itu juga, langsung dari browser pengguna,
           tanpa server backend dan tanpa database.
@@ -236,7 +236,7 @@ export default function DocsPage() {
         <Section title="Tiga Cara Mencoba">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             <MiniCard href="/live" title="Live Analysis" desc="Tool analisis mandiri, satu alamat satu hasil lengkap." />
-            <MiniCard href="/simulasi" title="Simulasi Desktop" desc="Dashboard portofolio fiktif + tombol tambah agunan data real." />
+            <MiniCard href="/simulasi" title="Simulasi Desktop" desc="Dashboard portofolio dummy + tombol tambah agunan data real." />
             <MiniCard href="/mobile" title="Mobile Demo" desc="Pengalaman BRISPOT mobile + menu tambah agunan data real." />
           </div>
         </Section>

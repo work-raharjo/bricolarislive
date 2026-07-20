@@ -51,12 +51,12 @@ export default function Home() {
           EMBRIO 2026 · PROPOSAL INOVASI
         </div>
         <h1 style={{ fontSize: 30, color: "#fff", margin: "10px 0 14px", lineHeight: 1.3 }}>
-          BRI COLARIS Live: dari data fiktif ke data publik real-time
+          BRI COLARIS Live: dari dummy data ke data publik real-time
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "#A9BEDB", maxWidth: 680 }}>
           Tiga cara mencoba konsep Living Collateral Intelligence. Yang pertama menarik data
           asli dari internet untuk alamat mana pun di Indonesia; dua lainnya adalah dashboard
-          desktop dan aplikasi mobile yang portofolio fiktifnya sekarang juga bisa
+          desktop dan aplikasi mobile yang portofolio dummy-nya sekarang juga bisa
           ditambahkan agunan baru dengan data real.
         </p>
 
@@ -80,14 +80,14 @@ export default function Home() {
             icon="🖥️"
             title="Simulasi Desktop"
             desc="Dashboard monitoring portofolio, Collateral Digital DNA, scenario & stress testing. Kini dilengkapi tombol 'Tambah Agunan (Data Real)' untuk menambah aset dari data live."
-            tag="FIKTIF + LIVE"
+            tag="DUMMY + LIVE"
           />
           <DemoCard
             href="/mobile"
             icon="📱"
             title="Demo Mobile App"
             desc="Pengalaman COLARIS di dalam BRISPOT untuk Mantri/RM. Menu 'Tambah Agunan' kini menganalisis lokasi nyata memakai data publik live."
-            tag="FIKTIF + LIVE"
+            tag="DUMMY + LIVE"
           />
         </div>
 

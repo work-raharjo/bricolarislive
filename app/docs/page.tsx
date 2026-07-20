@@ -299,9 +299,10 @@ export default function DocsPage() {
             Ini adalah pendekatan yang mendekati (approximate), bukan model LGD Basel yang
             literal. Basel Committee memakai tabel haircut supervisor berbasis data historis
             volatilitas harga per kelas aset, sementara di sini haircut jenis agunan
-            didekati secara manual dan CRI dipakai sebagai proxy volatilitas dinamis. Bank
-            sungguhan tetap memerlukan data historis recovery rate aktual untuk mengkalibrasi
-            model yang defensible secara regulasi.
+            didekati secara manual dan CRI dipakai sebagai proxy volatilitas dinamis, karena
+            pada tahap idea screening ini platform belum terhubung ke data historis recovery
+            rate internal BRI. Kalibrasi yang lebih presisi dan defensible secara regulasi
+            dapat dilakukan begitu koneksi ke data tersebut tersedia.
           </p>
         </Section>
 
@@ -328,7 +329,8 @@ export default function DocsPage() {
               disyaratkan Basel, bukan kepastian hukum yang lemah otomatis mengurangi nilai
               agunan yang diakui. Tambahan haircut dari CRI menggantikan kalibrasi volatilitas
               harga historis Basel dengan sinyal risiko real-time (iklim, gempa, ekonomi,
-              pasar) sebagai proxy, karena kami tidak punya data historis recovery rate BRI.
+              pasar) sebagai proxy, karena pada tahap idea screening ini platform belum
+              terhubung ke data historis recovery rate internal BRI.
             </div>
             <div>
               <b style={{ color: NAVY }}>3. Konsisten dengan proposal COLARIS itu sendiri.</b>{" "}
@@ -358,11 +360,11 @@ export default function DocsPage() {
             <b style={{ color: NAVY }}>Yang tetap jujur perlu diakui:</b> ini adaptasi
             struktural dari logika Basel, bukan implementasi tabel haircut supervisor Basel
             yang literal. Basel mengkalibrasi haircut dari data volatilitas historis riil per
-            kelas aset dan periode holding tertentu; kami tidak punya akses ke data itu,
-            sehingga haircut dasar per jenis agunan diperkirakan manual dan CRI dipakai
-            sebagai pengganti volatilitas dinamis. Bank sungguhan tetap perlu mengkalibrasi
-            ulang dengan data historis recovery rate aktual untuk membuat model ini
-            defensible secara regulasi.
+            kelas aset dan periode holding tertentu; pada tahap idea screening ini, platform
+            belum terhubung ke data tersebut, sehingga haircut dasar per jenis agunan
+            diperkirakan manual dan CRI dipakai sebagai pengganti volatilitas dinamis. Setelah
+            terhubung ke data historis recovery rate internal BRI, model ini dapat dikalibrasi
+            ulang agar lebih presisi dan defensible secara regulasi.
           </div>
         </Section>
 

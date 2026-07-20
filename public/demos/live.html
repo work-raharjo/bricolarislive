@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRI COLARIS · Live Analysis Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --navy:#00305E; --blue:#0057A8; --blue-deep:#031C34;
+  --orange:#F0691E; --orange-soft:#FDEEE3;
+  --ice:#F4F8FC; --ice-2:#E9F1FA; --line:#E1E8F1;
+  --ink:#1F2A37; --muted:#6B7686; --muted-2:#9AA5B4;
+  --ok:#1B8A56; --ok-bg:#E6F6EC;
+  --warn:#AD7A1E; --warn-bg:#FBF2DF;
+  --danger:#C13B57; --danger-bg:#FAE9EE;
+  --accent-blue:#C7DBF0;
+  --font:'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--ice);color:var(--ink);font-size:14px}
+header{background:linear-gradient(96deg,var(--blue-deep),var(--blue) 130%);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header img{height:26px}
+.hdiv{width:1px;height:22px;background:rgba(255,255,255,.28)}
+.brand b{font-size:18px;letter-spacing:.5px;display:block}
+.brand span{font-size:9.5px;color:var(--accent-blue);letter-spacing:2px}
+.livetag{margin-left:auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:5px 13px;font-size:11px;font-weight:700}
+.livetag i{display:inline-block;width:7px;height:7px;border-radius:99px;background:#4ADE80;margin-right:6px;animation:pulse 1.6s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.wrap{max-width:1240px;margin:0 auto;padding:18px 22px 40px;display:grid;grid-template-columns:360px 1fr;gap:16px}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(20,40,80,.05)}
+.card h3{font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:12px;font-weight:700}
+label{display:block;font-size:11.5px;font-weight:700;color:var(--navy);margin:12px 0 5px}
+input[type=text],input[type=number],select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;font-family:var(--font);background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--accent-blue)}
+.hint{font-size:10.5px;color:var(--muted-2);margin-top:4px}
+.btn{border:none;border-radius:11px;padding:11px 16px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:filter .15s}
+.btn:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-orange{background:var(--orange);color:#fff;box-shadow:0 6px 14px rgba(240,105,30,.22)}
+.btn-block{width:100%;margin-top:16px}
+.geo-results{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.geo-item{border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:11.5px;cursor:pointer;background:var(--ice)}
+.geo-item:hover{border-color:var(--accent-blue)}
+.geo-item.sel{border-color:var(--blue);background:var(--ice-2)}
+.geo-item b{color:var(--navy);display:block;font-size:12px}
+.samples{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{background:#fff;border:1px solid var(--accent-blue);color:var(--blue);border-radius:99px;font-size:10.5px;font-weight:700;padding:5px 10px;cursor:pointer;font-family:var(--font)}
+
+/* progress */
+.steps{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.step{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+.step .dot{width:18px;height:18px;border-radius:99px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.step.loading .dot{border-color:var(--blue);border-top-color:transparent;animation:spin .8s linear infinite}
+.step.done{color:var(--ink)}
+.step.done .dot{border-color:var(--ok);background:var(--ok);color:#fff}
+.step.fail{color:var(--danger)}
+.step.fail .dot{border-color:var(--danger);color:var(--danger)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* results */
+#map{height:260px;border-radius:12px;border:1px solid var(--line)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.fact{background:var(--ice);border-radius:11px;padding:11px}
+.fact .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.fact .v{font-size:16px;font-weight:700;color:var(--navy);margin-top:3px;font-variant-numeric:tabular-nums}
+.fact .d{font-size:10px;color:var(--muted-2);margin-top:2px}
+.fact.warn .v{color:var(--danger)}
+.dna-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.cri-num{font-size:44px;font-weight:800;color:var(--navy);line-height:1;font-variant-numeric:tabular-nums}
+.cri-cap{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:4px;max-width:180px;line-height:1.4}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 11px;border-radius:99px;margin-top:8px}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-danger{background:var(--danger-bg);color:var(--danger)}
+.bars{flex:1;min-width:260px;display:flex;flex-direction:column;gap:10px}
+.mb .bt{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+.mb .bt b{color:var(--navy)}
+.mb .bt span{color:var(--muted)}
+.mb .bar{height:8px;background:var(--ice-2);border-radius:99px;overflow:hidden}
+.mb .bar i{display:block;height:100%;border-radius:99px;transition:width .6s ease}
+.rec{display:flex;gap:9px;padding:10px 12px;border-radius:11px;font-size:12px;margin-bottom:8px;border:1px solid var(--line);background:var(--ice)}
+.rec.hi{border-color:#F5C6A5;background:var(--orange-soft)}
+.rec .no{font-weight:700;color:var(--orange)}
+.rec .why{color:var(--muted);font-size:10.5px;margin-top:3px;line-height:1.4}
+.valgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.vv{background:var(--ice);border-radius:11px;padding:12px}
+.vv.emph{background:var(--navy)}
+.vv .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.vv.emph .l{color:var(--accent-blue)}
+.vv .v{font-size:17px;font-weight:700;color:var(--navy);margin-top:3px;font-variant-numeric:tabular-nums}
+.vv.emph .v{color:#fff}
+.vv .d{font-size:10px;margin-top:2px;color:var(--muted-2)}
+.ok-t{color:var(--ok)} .bad-t{color:var(--danger)}
+.quakelist{font-size:11px;color:var(--muted);line-height:1.6;max-height:110px;overflow-y:auto}
+.quakelist b{color:var(--navy)}
+.src{font-size:10px;color:var(--muted-2);margin-top:10px;line-height:1.5}
+footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:var(--muted-2);line-height:1.6}
+.hidden{display:none}
+.errbox{background:var(--danger-bg);color:var(--danger);border-radius:10px;padding:10px 12px;font-size:12px;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <img id="logoImg" alt="BRI">
+  <span class="hdiv"></span>
+  <div class="brand"><b>COLARIS Live</b><span>ANALISIS AGUNAN · DATA REAL-TIME INTERNET</span></div>
+  <span class="livetag"><i></i>LIVE DATA</span>
+</header>
+
+<div class="wrap">
+  <!-- ===== INPUT PANEL ===== -->
+  <div>
+    <div class="card">
+      <h3>1 · Lokasi Agunan</h3>
+      <label for="addr">Alamat / area agunan</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="addr" placeholder="cth: Kelapa Gading, Jakarta Utara" style="flex:1">
+        <button class="btn btn-primary" id="btnGeo">Cari</button>
+      </div>
+      <div class="samples" id="samples"></div>
+      <div class="geo-results" id="geoResults"></div>
+
+      <h3 style="margin-top:20px">2 · Profil Agunan</h3>
+      <label for="ctype">Jenis agunan</label>
+      <select id="ctype">
+        <option value="rumah" data-liq="0.80">Rumah tinggal</option>
+        <option value="ruko" data-liq="0.78">Ruko / komersial</option>
+        <option value="gudang" data-liq="0.72">Gudang / industri</option>
+        <option value="tanah" data-liq="0.60">Tanah kosong</option>
+      </select>
+      <label for="cert">Jenis sertifikat (input manual, data BPN tidak tersedia publik)</label>
+      <select id="cert">
+        <option value="95">SHM (Sertifikat Hak Milik)</option>
+        <option value="85">SHGB (Hak Guna Bangunan)</option>
+        <option value="72">HGU / Hak Pakai</option>
+        <option value="45">AJB / Girik / belum bersertifikat</option>
+      </select>
+      <label for="nilai">Estimasi nilai pasar (Rp juta)</label>
+      <input type="number" id="nilai" value="2500" min="50">
+      <label for="plafon">Plafon / outstanding kredit (Rp juta)</label>
+      <input type="number" id="plafon" value="1500" min="10">
+
+      <button class="btn btn-orange btn-block" id="btnRun" disabled>Analisis dengan data real</button>
+      <div class="errbox hidden" id="errBox"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px" id="progressCard">
+      <h3>Intelligence Engine</h3>
+      <div class="steps" id="steps"></div>
+      <div class="src">Sumber data live: OpenStreetMap Nominatim (geocoding), Open-Meteo (elevasi, curah hujan, debit sungai GloFAS), USGS (gempa historis), Overpass/OSM (sungai, akses jalan, densitas komersial).</div>
+    </div>
+  </div>
+
+  <!-- ===== RESULTS ===== -->
+  <div id="results" class="hidden">
+    <div class="card">
+      <h3>Lokasi Terverifikasi</h3>
+      <div id="map"></div>
+      <div class="facts" id="facts"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Collateral Digital DNA · Skor dari Data Real</h3>
+      <div class="dna-row">
+        <div style="text-align:center">
+          <div id="dnaRing"></div>
+          <div class="cri-num" id="criNum">–</div>
+          <div class="cri-cap">Collateral Risk Index (0-100, tinggi = berisiko)</div>
+          <div id="criBadge"></div>
+        </div>
+        <div class="bars" id="scoreBars"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Decision Intelligence</h3>
+      <div class="valgrid" id="valGrid"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Rekomendasi · Explainable AI (reason code dari data aktual)</h3>
+      <div id="recs"></div>
+      <div class="src"><b style="color:var(--navy)">Human-in-the-loop:</b> hasil ini adalah decision support berbasis data publik. Nilai pasar tetap memerlukan appraisal, dan status legal memerlukan verifikasi BPN. Keputusan akhir pada pejabat berwenang.</div>
+    </div>
+
+    <div class="card" style="margin-top:14px" id="quakeCard">
+      <h3>Riwayat Gempa Signifikan (USGS, 10 tahun, radius 150 km)</h3>
+      <div class="quakelist" id="quakeList"></div>
+    </div>
+  </div>
+
+  <div id="placeholder" class="card" style="display:flex;align-items:center;justify-content:center;min-height:300px;color:var(--muted-2);text-align:center;font-size:13px;line-height:1.7">
+    Masukkan alamat agunan di panel kiri, pilih hasil geocoding,<br>lalu jalankan analisis untuk menarik data real dari internet.
+  </div>
+</div>
+
+<footer>
+  Demo EMBRIO 2026. Skor dihitung dari data publik real-time; bukan penilaian resmi dan bukan pengganti appraisal. Estimasi nilai pasar diinput manual karena data transaksi properti Indonesia tidak tersedia sebagai API publik. Hormati rate limit Nominatim/Overpass (demo, bukan produksi).
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+document.getElementById("logoImg").src = "data:image/png;base64,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";
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const fmt = n => n==null?"n/a":Number(n).toLocaleString("id-ID",{maximumFractionDigits:1});
+const fmtRp = jt => "Rp " + (jt>=1000 ? (jt/1000).toLocaleString("id-ID",{maximumFractionDigits:2})+" M" : jt.toLocaleString("id-ID",{maximumFractionDigits:0})+" jt");
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function fetchJson(url, opts={}, timeoutMs=20000){
+  const ctl=new AbortController();
+  const t=setTimeout(()=>ctl.abort(), timeoutMs);
+  return fetch(url,{...opts,signal:ctl.signal}).then(r=>{
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).finally(()=>clearTimeout(t));
+}
+
+/* ================= geocoding ================= */
+let selectedLoc=null;
+const SAMPLES=["Kelapa Gading, Jakarta Utara","Semarang Utara","Dago, Bandung","Pluit, Jakarta Utara","Denpasar Selatan"];
+$("samples").innerHTML=SAMPLES.map(s=>`<button class="chip">${s}</button>`).join("");
+document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{ $("addr").value=c.textContent; doGeocode(); }));
+$("btnGeo").addEventListener("click",doGeocode);
+$("addr").addEventListener("keydown",e=>{ if(e.key==="Enter") doGeocode(); });
+
+async function doGeocode(){
+  const q=$("addr").value.trim();
+  if(!q) return;
+  $("geoResults").innerHTML='<div class="hint">Mencari lokasi via OpenStreetMap Nominatim...</div>';
+  selectedLoc=null; $("btnRun").disabled=true;
+  try{
+    const data=await fetchJson(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=id&addressdetails=1`);
+    if(!data.length){ $("geoResults").innerHTML='<div class="hint">Tidak ditemukan. Coba tambahkan nama kota.</div>'; return; }
+    $("geoResults").innerHTML="";
+    data.forEach(d=>{
+      const div=document.createElement("div");
+      div.className="geo-item";
+      div.innerHTML=`<b>${d.display_name.split(",").slice(0,2).join(",")}</b>${d.display_name.split(",").slice(2,5).join(",")}`;
+      div.addEventListener("click",()=>{
+        document.querySelectorAll(".geo-item").forEach(x=>x.classList.remove("sel"));
+        div.classList.add("sel");
+        selectedLoc={lat:parseFloat(d.lat),lon:parseFloat(d.lon),name:d.display_name};
+        $("btnRun").disabled=false;
+      });
+      $("geoResults").appendChild(div);
+    });
+  }catch(e){
+    $("geoResults").innerHTML=`<div class="hint">Geocoding gagal (${e.message}). Coba lagi.</div>`;
+  }
+}
+
+/* ================= engine steps ================= */
+const STEPS=[
+  ["elev","Elevation Engine · Open-Meteo"],
+  ["rain","Climate Engine · curah hujan 30 hari + prakiraan"],
+  ["flood","Flood Engine · debit sungai GloFAS"],
+  ["quake","Seismic Engine · USGS 10 tahun"],
+  ["osm","Geo & Market Engine · Overpass/OSM"],
+];
+function renderSteps(){
+  $("steps").innerHTML=STEPS.map(([id,label])=>
+    `<div class="step" id="st-${id}"><span class="dot"></span><span>${label}</span></div>`).join("");
+}
+renderSteps();
+function setStep(id,state,extra){
+  const el=$("st-"+id);
+  el.className="step "+state;
+  el.querySelector(".dot").textContent = state==="done"?"✓": state==="fail"?"!":"";
+  if(extra) el.querySelector("span:last-child").textContent=extra;
+}
+
+/* ================= main analysis ================= */
+let map=null, marker=null;
+$("btnRun").addEventListener("click",runAnalysis);
+
+async function runAnalysis(){
+  if(!selectedLoc) return;
+  const {lat,lon}=selectedLoc;
+  $("errBox").classList.add("hidden");
+  $("btnRun").disabled=true;
+  renderSteps();
+  $("results").classList.add("hidden");
+  $("placeholder").classList.remove("hidden");
+  $("placeholder").innerHTML="Menarik data real dari internet...";
+
+  const R={elev:null,rain30:null,rainMax:null,rain7f:null,discharge:null,dischargeRatio:null,
+           quakes:[],waterwayM:null,shops:null,roads:null};
+
+  /* Elevation */
+  setStep("elev","loading");
+  try{
+    const d=await fetchJson(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
+    R.elev=d.elevation && d.elevation[0];
+    setStep("elev","done",`Elevation Engine · ${fmt(R.elev)} m dpl`);
+  }catch(e){ setStep("elev","fail","Elevation Engine · gagal ("+e.message+")"); }
+
+  /* Rainfall */
+  setStep("rain","loading");
+  try{
+    const d=await fetchJson(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&past_days=31&forecast_days=7&timezone=auto`);
+    const arr=d.daily.precipitation_sum.map(v=>v==null?0:v);
+    const past=arr.slice(0,31), future=arr.slice(31);
+    R.rain30=past.reduce((a,b)=>a+b,0);
+    R.rainMax=Math.max(...past);
+    R.rain7f=future.reduce((a,b)=>a+b,0);
+    setStep("rain","done",`Climate Engine · ${fmt(R.rain30)} mm/30 hari, prakiraan ${fmt(R.rain7f)} mm/7 hari`);
+  }catch(e){ setStep("rain","fail","Climate Engine · gagal ("+e.message+")"); }
+
+  /* Flood discharge */
+  setStep("flood","loading");
+  try{
+    const d=await fetchJson(`https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&past_days=31&forecast_days=1`);
+    const arr=(d.daily.river_discharge||[]).filter(v=>v!=null);
+    if(arr.length){
+      R.discharge=arr[arr.length-1];
+      const mx=Math.max(...arr);
+      R.dischargeRatio = mx>0 ? R.discharge/mx : 0;
+      setStep("flood","done",`Flood Engine · debit ${fmt(R.discharge)} m³/s (${Math.round(R.dischargeRatio*100)}% dari puncak 30 hari)`);
+    }else{
+      setStep("flood","done","Flood Engine · tidak ada sungai GloFAS terdekat (risiko luapan rendah)");
+    }
+  }catch(e){ setStep("flood","fail","Flood Engine · gagal ("+e.message+")"); }
+
+  /* Earthquakes */
+  setStep("quake","loading");
+  try{
+    const start=new Date(); start.setFullYear(start.getFullYear()-10);
+    const d=await fetchJson(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=150&starttime=${start.toISOString().slice(0,10)}&minmagnitude=5&orderby=magnitude&limit=50`);
+    R.quakes=(d.features||[]).map(f=>({mag:f.properties.mag,place:f.properties.place,time:f.properties.time}));
+    setStep("quake","done",`Seismic Engine · ${R.quakes.length} gempa M≥5 dalam 150 km / 10 thn`);
+  }catch(e){ setStep("quake","fail","Seismic Engine · gagal ("+e.message+")"); }
+
+  /* Overpass: waterways, roads, shops */
+  setStep("osm","loading");
+  try{
+    const q=`[out:json][timeout:25];(way(around:500,${lat},${lon})["waterway"~"river|canal|stream"];way(around:600,${lat},${lon})["highway"~"motorway|trunk|primary|secondary"];node(around:1000,${lat},${lon})["shop"];node(around:1000,${lat},${lon})["amenity"~"bank|marketplace|atm"];);out center 400;`;
+    const d=await fetchJson("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}},25000);
+    let minW=null, roads=0, shops=0;
+    (d.elements||[]).forEach(el=>{
+      if(el.tags && el.tags.waterway){
+        const c=el.center||el;
+        if(c.lat!=null){ const dist=haversine(lat,lon,c.lat,c.lon)*1000; if(minW==null||dist<minW) minW=dist; }
+      } else if(el.tags && el.tags.highway){ roads++; }
+      else if(el.tags && (el.tags.shop||el.tags.amenity)){ shops++; }
+    });
+    R.waterwayM=minW; R.roads=roads; R.shops=shops;
+    setStep("osm","done",`Geo & Market · sungai terdekat ${minW==null?"tidak ada <500 m":fmt(minW)+" m"}, ${roads} ruas jalan utama, ${shops} titik komersial/1 km`);
+  }catch(e){ setStep("osm","fail","Geo & Market Engine · gagal/timeout ("+e.message+"), skor memakai nilai netral"); }
+
+  computeAndRender(R);
+  $("btnRun").disabled=false;
+}
+
+/* ================= scoring (transparent) ================= */
+function computeAndRender(R){
+  const nilai=Math.max(50,parseFloat($("nilai").value)||0);
+  const plafon=Math.max(10,parseFloat($("plafon").value)||0);
+  const liq=parseFloat($("ctype").selectedOptions[0].dataset.liq);
+  const legal=parseInt($("cert").value);
+  const reasons=[];
+
+  /* Climate score */
+  let climate=100;
+  if(R.elev!=null){
+    if(R.elev<5){climate-=35;reasons.push({s:"Climate",t:`Elevasi hanya ${fmt(R.elev)} m dpl: sangat rawan rob/genangan`,hi:1});}
+    else if(R.elev<10){climate-=22;reasons.push({s:"Climate",t:`Elevasi ${fmt(R.elev)} m dpl di bawah ambang aman 10 m`,hi:1});}
+    else if(R.elev<20){climate-=10;}
+  }
+  if(R.rain30!=null){
+    if(R.rain30>600){climate-=20;reasons.push({s:"Climate",t:`Curah hujan aktual 30 hari ${fmt(R.rain30)} mm (sangat tinggi)`,hi:0});}
+    else if(R.rain30>400){climate-=12;}
+    else if(R.rain30>250){climate-=6;}
+  }
+  if(R.rain7f!=null && R.rain7f>150){climate-=8;reasons.push({s:"Climate",t:`Prakiraan hujan 7 hari ke depan ${fmt(R.rain7f)} mm: pantau genangan`,hi:0});}
+  if(R.dischargeRatio!=null && R.dischargeRatio>0.8){climate-=15;reasons.push({s:"Climate",t:`Debit sungai ${Math.round(R.dischargeRatio*100)}% dari puncak 30 hari (GloFAS)`,hi:1});}
+  else if(R.dischargeRatio!=null && R.dischargeRatio>0.6){climate-=8;}
+  if(R.waterwayM!=null){
+    if(R.waterwayM<150){climate-=15;reasons.push({s:"Climate",t:`Sungai/kanal hanya ${fmt(R.waterwayM)} m dari lokasi (OSM)`,hi:1});}
+    else if(R.waterwayM<400){climate-=8;}
+  }
+  climate=Math.max(5,Math.round(climate));
+
+  /* Seismic score */
+  let seismic=100;
+  const big=R.quakes.filter(q=>q.mag>=6).length, med=R.quakes.length;
+  if(big>=3){seismic-=40;reasons.push({s:"Seismic",t:`${big} gempa M≥6 tercatat USGS dalam 150 km / 10 tahun`,hi:1});}
+  else if(big>=1){seismic-=25;reasons.push({s:"Seismic",t:`${big} gempa M≥6 dalam 150 km (USGS): cek standar bangunan`,hi:0});}
+  if(med>=15) seismic-=15; else if(med>=6) seismic-=8;
+  seismic=Math.max(5,Math.round(seismic));
+
+  /* Geo/access score */
+  let geo=70;
+  if(R.roads!=null){ if(R.roads>=8)geo=92; else if(R.roads>=3)geo=82; else if(R.roads>=1)geo=72; else {geo=55;reasons.push({s:"Geo",t:"Tidak ada jalan arteri/kolektor dalam 600 m (OSM): akses terbatas",hi:0});} }
+  geo=Math.round(geo);
+
+  /* Market/liquidity proxy */
+  let market=65;
+  if(R.shops!=null){ if(R.shops>=60)market=90; else if(R.shops>=25)market=82; else if(R.shops>=8)market=72; else {market=58;reasons.push({s:"Market",t:`Hanya ${R.shops} titik komersial dalam 1 km (OSM): likuiditas pasar lokal terbatas`,hi:0});} }
+  market=Math.round(market);
+
+  if(legal<70) reasons.push({s:"Legal",t:"Dokumen belum SHM/SHGB: prioritaskan peningkatan hak & verifikasi BPN",hi:1});
+
+  const scores={Market:market,Legal:legal,Geo:geo,Climate:climate,Seismic:seismic};
+  const w={Market:.2,Legal:.2,Geo:.2,Climate:.25,Seismic:.15};
+  const health=Object.keys(scores).reduce((a,k)=>a+scores[k]*w[k],0);
+  const cri=Math.max(2,Math.min(98,Math.round(100-health)));
+
+  const ltv=plafon/nilai*100;
+  const maxLtv=Math.max(40,Math.round(80-cri*0.4));
+  const nl=nilai*liq*(1-cri/400);
+  const rec=Math.max(15,Math.min(97,Math.round(liq*100-cri*.45+(legal-70)*.25)));
+
+  if(ltv>maxLtv) reasons.unshift({s:"LTV",t:`LTV aktual ${fmt(ltv)}% melebihi LTV maksimal yang disarankan ${maxLtv}% untuk profil risiko ini`,hi:1});
+  if(cri>=50) reasons.unshift({s:"CRI",t:`Collateral Risk Index ${cri} melewati ambang 50: masukkan ke watchlist & appraisal lapangan`,hi:1});
+  if(!reasons.length) reasons.push({s:"OK",t:"Seluruh indikator data publik dalam batas sehat: monitoring digital berkala memadai",hi:0});
+
+  renderResults(R,scores,cri,{nilai,plafon,ltv,maxLtv,nl,rec,liq},reasons);
+}
+
+/* ================= render ================= */
+const COLORS={Market:"#0057A8",Legal:"#6B4EAE",Geo:"#AD7A1E",Climate:"#C13B57",Seismic:"#1B8A56"};
+function polar(cx,cy,r,d){const a=d*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+function arc(cx,cy,r,a1,a2,color,w){
+  if(a2-a1<0.5)return"";
+  const[x1,y1]=polar(cx,cy,r,a1),[x2,y2]=polar(cx,cy,r,a2);
+  return`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${(a2-a1)>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+function criBadge(c){return c<30?["b-ok","Sehat"]:c<50?["b-warn","Perlu Perhatian"]:["b-danger","Watchlist"];}
+
+function renderResults(R,scores,cri,fin,reasons){
+  $("placeholder").classList.add("hidden");
+  $("results").classList.remove("hidden");
+
+  /* map (best-effort: never blocks results if Leaflet/tiles are unreachable) */
+  const {lat,lon}=selectedLoc;
+  try{
+    if(typeof L!=="undefined"){
+      if(!map){
+        map=L.map("map").setView([lat,lon],15);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+      } else map.setView([lat,lon],15);
+      if(marker) marker.remove();
+      marker=L.marker([lat,lon]).addTo(map).bindPopup(selectedLoc.name.split(",").slice(0,3).join(",")).openPopup();
+      setTimeout(()=>map.invalidateSize(),150);
+    } else {
+      $("map").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted-2);font-size:12px">Peta tidak dapat dimuat · koordinat ${lat.toFixed(5)}, ${lon.toFixed(5)}</div>`;
+    }
+  }catch(e){
+    $("map").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted-2);font-size:12px">Peta tidak dapat dimuat · koordinat ${lat.toFixed(5)}, ${lon.toFixed(5)}</div>`;
+  }
+
+  /* facts */
+  const facts=[
+    ["Koordinat",`${lat.toFixed(5)}, ${lon.toFixed(5)}`,"Nominatim/OSM",false],
+    ["Elevasi",R.elev==null?"n/a":fmt(R.elev)+" m dpl","Open-Meteo",R.elev!=null&&R.elev<10],
+    ["Hujan 30 hari",R.rain30==null?"n/a":fmt(R.rain30)+" mm","aktual, Open-Meteo",R.rain30!=null&&R.rain30>400],
+    ["Prakiraan 7 hari",R.rain7f==null?"n/a":fmt(R.rain7f)+" mm","Open-Meteo",R.rain7f!=null&&R.rain7f>150],
+    ["Sungai terdekat",R.waterwayM==null?"> 500 m":fmt(R.waterwayM)+" m","Overpass/OSM",R.waterwayM!=null&&R.waterwayM<150],
+    ["Gempa M≥5 (10 thn)",R.quakes.length+" kejadian","USGS, radius 150 km",R.quakes.filter(q=>q.mag>=6).length>0],
+    ["Titik komersial",R.shops==null?"n/a":R.shops+" /1 km","Overpass/OSM",false],
+    ["Jalan utama",R.roads==null?"n/a":R.roads+" ruas /600 m","Overpass/OSM",false],
+  ];
+  $("facts").innerHTML=facts.map(([l,v,d,warn])=>
+    `<div class="fact ${warn?"warn":""}"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
+
+  /* DNA ring */
+  const keys=Object.keys(COLORS),Rr=52,C=66,sw=10,gap=6,seg=(360-5*gap)/5;
+  let deg=-90,svg="";
+  keys.forEach(k=>{
+    svg+=arc(C,C,Rr,deg,deg+seg,"#E9F1FA",sw);
+    svg+=arc(C,C,Rr,deg,deg+seg*scores[k]/100,COLORS[k],sw);
+    deg+=seg+gap;
+  });
+  $("dnaRing").innerHTML=`<svg width="132" height="132" viewBox="0 0 132 132">${svg}
+    <text x="66" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="#00305E" font-family="Plus Jakarta Sans,Arial">DNA</text></svg>`;
+  $("criNum").textContent=cri;
+  const [bc,bt]=criBadge(cri);
+  $("criBadge").innerHTML=`<span class="badge ${bc}">${bt}</span>`;
+
+  const DESC={Market:"Densitas komersial 1 km (proxy likuiditas)",Legal:"Jenis sertifikat (input manual)",
+    Geo:"Akses jalan arteri/kolektor",Climate:"Elevasi + hujan aktual + debit sungai + jarak sungai",Seismic:"Gempa historis USGS"};
+  $("scoreBars").innerHTML=keys.map(k=>
+    `<div class="mb"><div class="bt"><b>${k}</b><span>${scores[k]}/100 · ${DESC[k]}</span></div>
+     <div class="bar"><i style="width:${scores[k]}%;background:${COLORS[k]}"></i></div></div>`).join("");
+
+  /* decision */
+  const ltvOk=fin.ltv<=fin.maxLtv;
+  $("valGrid").innerHTML=`
+    <div class="vv"><div class="l">Nilai pasar (input)</div><div class="v">${fmtRp(fin.nilai)}</div><div class="d">memerlukan appraisal</div></div>
+    <div class="vv"><div class="l">Nilai likuidasi estimasi</div><div class="v">${fmtRp(fin.nl)}</div><div class="d">faktor ${Math.round(fin.liq*100)}% × penyesuaian risiko</div></div>
+    <div class="vv"><div class="l">LTV aktual</div><div class="v">${fmt(fin.ltv)}%</div><div class="d ${ltvOk?"ok-t":"bad-t"}">${ltvOk?"di bawah":"MELEBIHI"} LTV maks. disarankan</div></div>
+    <div class="vv"><div class="l">LTV maks. disarankan</div><div class="v">${fin.maxLtv}%</div><div class="d">disesuaikan CRI ${cri}</div></div>
+    <div class="vv emph"><div class="l">Recovery Probability</div><div class="v">${fin.rec}%</div></div>`;
+
+  /* recs */
+  $("recs").innerHTML=reasons.slice(0,6).map((r,i)=>
+    `<div class="rec ${r.hi?"hi":""}"><span class="no">${String(i+1).padStart(2,"0")}</span>
+     <span><b style="color:var(--navy)">${r.s}</b><div class="why">${r.t}</div></span></div>`).join("");
+
+  /* quakes */
+  if(R.quakes.length){
+    $("quakeCard").classList.remove("hidden");
+    $("quakeList").innerHTML=R.quakes.slice(0,8).map(q=>
+      `<div><b>M${q.mag.toFixed(1)}</b> · ${q.place} · ${new Date(q.time).toLocaleDateString("id-ID")}</div>`).join("");
+  } else {
+    $("quakeList").innerHTML="Tidak ada gempa M≥5 tercatat dalam radius 150 km selama 10 tahun terakhir.";
+  }
+}
+</script>
+</body>
+</html>

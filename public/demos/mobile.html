@@ -361,10 +361,10 @@ body{font-family:var(--font);background:
             <select id="addCert" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
               <option value="95">SHM</option><option value="85">SHGB</option><option value="72">HGU/Hak Pakai</option><option value="45">AJB/Girik</option>
             </select>
-            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Nilai pasar (Rp Miliar)</label>
-            <input type="number" id="addNilai" value="3.0" step="0.1" min="0.1" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
-            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Plafon kredit (Rp Miliar)</label>
-            <input type="number" id="addPlafon" value="1.8" step="0.1" min="0.05" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Nilai pasar (Rp Juta)</label>
+            <input type="number" id="addNilai" value="3000" step="50" min="50" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
+            <label style="display:block;font-size:11px;font-weight:bold;color:var(--navy);margin:10px 0 5px">Plafon kredit (Rp Juta)</label>
+            <input type="number" id="addPlafon" value="1800" step="50" min="25" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;font-family:var(--font)">
             <button class="simbtn" id="addRunBtn">Analisis Data Real &amp; Tambahkan</button>
           </div>
 
@@ -735,8 +735,9 @@ document.getElementById("addRunBtn").addEventListener("click", async ()=>{
     const certScore = parseInt(document.getElementById("addCert").value);
     const scored = ColarisLiveEngine.scoreFromSignals(R, certScore);
     const [icon,shortName,typeLabel] = document.getElementById("addType").value.split("|");
-    const nilai = Math.max(0.1, parseFloat(document.getElementById("addNilai").value)||0.1);
-    const plafon = Math.max(0.05, parseFloat(document.getElementById("addPlafon").value)||0.05);
+    const nilaiJuta = Math.max(50, parseFloat(document.getElementById("addNilai").value)||50);
+    const plafonJuta = Math.max(25, parseFloat(document.getElementById("addPlafon").value)||25);
+    const nilai = nilaiJuta/1000, plafon = plafonJuta/1000;
     const liq = LIQ_BY_TYPE_M[shortName] || 0.72;
     const newId = "LIVE" + (ASSETS.filter(a=>a.live).length+1);
 

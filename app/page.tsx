@@ -26,6 +26,25 @@ export default function Home() {
               REAL-DATA COLLATERAL RISK INTELLIGENCE
             </div>
           </div>
+          <Link
+            href="/docs"
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: "#fff",
+              textDecoration: "none",
+              fontSize: 12,
+              fontWeight: "bold",
+              background: "rgba(255,255,255,.08)",
+              border: "1px solid rgba(255,255,255,.18)",
+              borderRadius: 99,
+              padding: "7px 14px",
+            }}
+          >
+            📄 Dokumentasi
+          </Link>
         </div>
 
         <div style={{ fontSize: 11, letterSpacing: 2, color: "#F7A468", fontWeight: "bold" }}>
@@ -75,10 +94,31 @@ export default function Home() {
         <p style={{ fontSize: 11, color: "#7189B0", marginTop: 40, lineHeight: 1.6 }}>
           Status legal (SHM/SHGB/dll) dan estimasi nilai pasar tetap input manual karena
           data BPN dan transaksi properti Indonesia tidak tersedia sebagai API publik.
-          Seluruh skor lain dihitung transparan dari sumber yang disebutkan di setiap demo.
+          Seluruh skor lain dihitung transparan dari sumber yang disebutkan di halaman{" "}
+          <Link href="/docs" style={{ color: "#F7A468" }}>Dokumentasi</Link>.
         </p>
+
+        <div style={{ marginTop: 44, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,.12)" }}>
+          <div style={{ fontSize: 10, letterSpacing: 1.5, color: "#7189B0", fontWeight: "bold", marginBottom: 14 }}>
+            EMBRIO 2026 BY
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+            <Credit name="AR Risqi Herlambang Raharjo" role="Regulatory and Spectrum Management, IT DC Infrastructure and Operation" />
+            <Credit name="Bagas Kurniawan" role="Chief Information Security Officer (CISO) Group" />
+            <Credit name="Jessica Anastasya Octavia" role="Retail Transaction Group" />
+          </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+function Credit({ name, role }: { name: string; role: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: "bold", color: "#fff" }}>{name}</div>
+      <div style={{ fontSize: 11, color: "#8FA3C4", marginTop: 3, lineHeight: 1.4 }}>{role}</div>
+    </div>
   );
 }
 

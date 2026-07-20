@@ -1,0 +1,288 @@
+import Image from "next/image";
+import Link from "next/link";
+
+export const metadata = {
+  title: "BRI COLARIS Live · Dokumentasi",
+};
+
+const NAVY = "#00305E";
+const BLUE = "#0057A8";
+const MUTED = "#6B7686";
+const LINE = "#E1E8F1";
+const ICE = "#F4F8FC";
+const ORANGE = "#F0691E";
+
+const SOURCES = [
+  {
+    engine: "Geocoding",
+    provider: "OpenStreetMap Nominatim",
+    url: "https://nominatim.openstreetmap.org",
+    data: "Mengubah alamat yang diketik menjadi koordinat lintang/bujur.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Elevation Engine",
+    provider: "Open-Meteo",
+    url: "https://open-meteo.com",
+    data: "Ketinggian lokasi di atas permukaan laut, dipakai sebagai proxy risiko rob/genangan.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Climate Engine",
+    provider: "Open-Meteo",
+    url: "https://open-meteo.com",
+    data: "Curah hujan aktual 30 hari terakhir dan prakiraan 7 hari ke depan di titik koordinat.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Flood Engine",
+    provider: "Open-Meteo Flood API (GloFAS)",
+    url: "https://open-meteo.com/en/docs/flood-api",
+    data: "Debit sungai terkini dibandingkan puncak 30 hari terakhir, di sungai terdekat model GloFAS.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Seismic Engine (USGS)",
+    provider: "USGS Earthquake Catalog",
+    url: "https://earthquake.usgs.gov/fdsnws/event/1/",
+    data: "Riwayat gempa M5+ dalam radius 150 km, 10 tahun terakhir.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Seismic Engine (BMKG)",
+    provider: "BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)",
+    url: "https://data.bmkg.go.id",
+    data: "Feed gempa terkini resmi Indonesia, sebagai pelengkap USGS yang lebih otoritatif untuk konteks lokal.",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Economic Engine",
+    provider: "World Bank Open Data",
+    url: "https://data.worldbank.org",
+    data: "Pertumbuhan PDB dan inflasi tahunan Indonesia (indikator nasional, bukan hyperlocal).",
+    key: "Tidak perlu",
+  },
+  {
+    engine: "Fire Hotspot Engine",
+    provider: "NASA FIRMS (VIIRS)",
+    url: "https://firms.modaps.eosdis.nasa.gov/api/area/",
+    data: "Titik api aktif 3 hari terakhir dalam radius ~15 km, relevan terutama untuk lahan/perkebunan.",
+    key: "Perlu MAP_KEY gratis (belum dikonfigurasi di demo ini)",
+  },
+  {
+    engine: "Geo & Market Engine",
+    provider: "Overpass API (OpenStreetMap)",
+    url: "https://overpass-api.de",
+    data: "Jarak ke sungai/kanal terdekat, jumlah jalan arteri/kolektor, dan densitas titik komersial sebagai proxy likuiditas pasar.",
+    key: "Tidak perlu",
+  },
+];
+
+export default function DocsPage() {
+  return (
+    <main style={{ background: "#fff", minHeight: "100dvh", fontFamily: "Arial, Helvetica, sans-serif", color: "#1F2A37" }}>
+      <header
+        style={{
+          background: `linear-gradient(96deg, #031C34, ${BLUE} 130%)`,
+          color: "#fff",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <Link
+          href="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#fff",
+            textDecoration: "none",
+            fontSize: 12,
+            fontWeight: "bold",
+            background: "rgba(255,255,255,.12)",
+            border: "1px solid rgba(255,255,255,.22)",
+            borderRadius: 99,
+            padding: "6px 12px",
+          }}
+        >
+          ← Beranda
+        </Link>
+        <Image src="/bri-logo-white.png" alt="BRI" width={62} height={25} />
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,.28)" }} />
+        <div style={{ lineHeight: 1.1 }}>
+          <b style={{ fontSize: 15 }}>COLARIS LIVE</b>
+          <div style={{ fontSize: 9, color: "#BFD6EE", letterSpacing: 1.5 }}>DOKUMENTASI</div>
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 920, margin: "0 auto", padding: "40px 24px 80px" }}>
+        <div style={{ fontSize: 11, letterSpacing: 2, color: ORANGE, fontWeight: "bold" }}>
+          DOKUMENTASI TEKNIS
+        </div>
+        <h1 style={{ fontSize: 28, color: NAVY, margin: "10px 0 14px" }}>
+          Dari mana data ini diambil, dan bagaimana aplikasi ini bekerja
+        </h1>
+        <p style={{ fontSize: 14, lineHeight: 1.7, color: "#3A4553", maxWidth: 720 }}>
+          BRI COLARIS Live berbeda dari kebanyakan demo AI karena tidak memakai data fiktif
+          yang sudah disiapkan sebelumnya. Setiap kali analisis dijalankan, aplikasi menarik
+          data nyata dari sejumlah sumber publik saat itu juga, langsung dari browser pengguna,
+          tanpa server backend dan tanpa database.
+        </p>
+
+        <Section title="Alur Kerja Aplikasi">
+          <ol style={{ paddingLeft: 20, fontSize: 13.5, lineHeight: 1.9, color: "#3A4553" }}>
+            <li>
+              <b style={{ color: NAVY }}>Geocoding</b>, alamat yang diketik pengguna diubah menjadi
+              koordinat lintang/bujur lewat OpenStreetMap Nominatim.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Fan-out ke 8 engine</b> secara paralel/berurutan, masing-masing
+              memanggil satu API publik dengan koordinat tersebut sebagai parameter.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Setiap engine independen</b>, jika satu API gagal atau timeout,
+              engine lain tetap berjalan. Skor yang bergantung pada data yang gagal ditarik akan
+              memakai nilai netral, bukan membuat aplikasi berhenti.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Scoring transparan</b>, hasil mentah setiap API diubah menjadi
+              skor 0 sampai 100 lewat aturan eksplisit yang bisa dibaca di kode sumber (lihat
+              reason code pada setiap rekomendasi).
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Collateral Risk Index (CRI)</b> dihitung sebagai rata-rata
+              tertimbang dari seluruh dimensi skor.
+            </li>
+          </ol>
+        </Section>
+
+        <Section title="Sumber Data per Engine">
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: ICE, textAlign: "left" }}>
+                  <Th>Engine</Th>
+                  <Th>Sumber</Th>
+                  <Th>Data yang diambil</Th>
+                  <Th>API Key</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {SOURCES.map((s) => (
+                  <tr key={s.engine} style={{ borderBottom: `1px solid ${LINE}` }}>
+                    <Td><b style={{ color: NAVY }}>{s.engine}</b></Td>
+                    <Td>
+                      <a href={s.url} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: "none" }}>
+                        {s.provider}
+                      </a>
+                    </Td>
+                    <Td style={{ color: "#3A4553" }}>{s.data}</Td>
+                    <Td>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: "bold",
+                          color: s.key === "Tidak perlu" ? "#1B8A56" : ORANGE,
+                        }}
+                      >
+                        {s.key}
+                      </span>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        <Section title="Keterbatasan yang Jujur Kami Akui">
+          <ul style={{ paddingLeft: 20, fontSize: 13.5, lineHeight: 1.9, color: "#3A4553" }}>
+            <li>
+              <b style={{ color: NAVY }}>Status legal (SHM/SHGB/dll)</b> tetap input manual karena data
+              pertanahan BPN tidak tersedia sebagai API publik yang bisa diakses browser.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Nilai pasar dan plafon kredit</b> juga input manual, karena
+              tidak ada API transaksi properti Indonesia yang publik.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Economic Intelligence bersifat nasional</b>, bukan hyperlocal:
+              GDP growth dan inflasi dari World Bank sama untuk seluruh Indonesia, bukan spesifik
+              per kecamatan.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Fire Hotspot Engine</b> membutuhkan MAP_KEY gratis dari NASA
+              FIRMS yang belum dikonfigurasi pada demo publik ini (untuk mengaktifkan, daftar di{" "}
+              <a href="https://firms.modaps.eosdis.nasa.gov/api/area/" target="_blank" rel="noreferrer" style={{ color: BLUE }}>
+                firms.modaps.eosdis.nasa.gov
+              </a>{" "}
+              lalu isi konstanta <code>FIRMS_MAP_KEY</code> di <code>live-engine.js</code>).
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Overpass API</b> (OpenStreetMap) adalah layanan publik gratis
+              yang kadang overload. Aplikasi mencoba 3 server mirror berbeda secara berurutan
+              sebelum menyerah ke skor netral.
+            </li>
+            <li>
+              Seluruh skor adalah <b style={{ color: NAVY }}>decision support</b>, bukan appraisal resmi.
+              Keputusan kredit tetap memerlukan verifikasi manusia (human-in-the-loop).
+            </li>
+          </ul>
+        </Section>
+
+        <Section title="Tiga Cara Mencoba">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <MiniCard href="/live" title="Live Analysis" desc="Tool analisis mandiri, satu alamat satu hasil lengkap." />
+            <MiniCard href="/simulasi" title="Simulasi Desktop" desc="Dashboard portofolio fiktif + tombol tambah agunan data real." />
+            <MiniCard href="/mobile" title="Mobile Demo" desc="Pengalaman BRISPOT mobile + menu tambah agunan data real." />
+          </div>
+        </Section>
+
+        <p style={{ fontSize: 11, color: "#9AA5B4", marginTop: 40, lineHeight: 1.6 }}>
+          Proposal EMBRIO 2026, BRI COLARIS (Collateral Risk Intelligence System). Seluruh
+          proyeksi dampak pada dek presentasi bersifat target manajemen dan akan diuji pada
+          tahap Proof of Concept.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: 36 }}>
+      <h2 style={{ fontSize: 13, color: "#6B7686", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, fontWeight: "bold" }}>
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th style={{ padding: "9px 10px", fontSize: 10.5, color: MUTED, fontWeight: "bold", letterSpacing: 0.3 }}>{children}</th>;
+}
+function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <td style={{ padding: "9px 10px", verticalAlign: "top", ...style }}>{children}</td>;
+}
+
+function MiniCard({ href, title, desc }: { href: string; title: string; desc: string }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "block",
+        border: `1px solid ${LINE}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        textDecoration: "none",
+        background: ICE,
+      }}
+    >
+      <div style={{ fontSize: 13.5, fontWeight: "bold", color: NAVY }}>{title}</div>
+      <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>{desc}</div>
+    </Link>
+  );
+}

@@ -61,6 +61,8 @@ input:focus,select:focus{outline:2px solid var(--accent-blue)}
 .step.done .dot{border-color:var(--ok);background:var(--ok);color:#fff}
 .step.fail{color:var(--danger)}
 .step.fail .dot{border-color:var(--danger);color:var(--danger)}
+.step.skip{color:var(--muted-2)}
+.step.skip .dot{border-color:var(--muted-2);color:var(--muted-2)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* results */
@@ -107,6 +109,10 @@ footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:v
 </head>
 <body>
 <header>
+  <a href="/" target="_top" style="display:flex;align-items:center;gap:6px;color:#fff;text-decoration:none;font-size:12px;font-weight:700;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:6px 12px 6px 10px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Beranda
+  </a>
   <img id="logoImg" alt="BRI">
   <span class="hdiv"></span>
   <div class="brand"><b>COLARIS Live</b><span>ANALISIS AGUNAN · DATA REAL-TIME INTERNET</span></div>
@@ -192,8 +198,9 @@ footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:v
     </div>
 
     <div class="card" style="margin-top:14px" id="quakeCard">
-      <h3>Riwayat Gempa Signifikan (USGS, 10 tahun, radius 150 km)</h3>
+      <h3>Riwayat Gempa Signifikan (USGS 10 tahun + BMKG terkini)</h3>
       <div class="quakelist" id="quakeList"></div>
+      <div id="bmkgQuakeSection" style="margin-top:12px"></div>
     </div>
   </div>
 
@@ -250,6 +257,58 @@ async function fetchOverpass(query, onAttempt){
   throw lastErr || new Error("Semua mirror Overpass gagal");
 }
 
+// Set your own free key from https://firms.modaps.eosdis.nasa.gov/api/area/ to enable the
+// Fire Hotspot Engine. Left empty: the engine reports "not configured" and everything else
+// keeps working normally.
+const FIRMS_MAP_KEY = "";
+
+function fetchText(url, opts={}, timeoutMs=20000){
+  const ctl=new AbortController();
+  const t=setTimeout(()=>ctl.abort(), timeoutMs);
+  return fetch(url,{...opts,signal:ctl.signal}).then(r=>{
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.text();
+  }).finally(()=>clearTimeout(t));
+}
+
+// World Bank Open Data: national GDP growth + inflation for Indonesia. No API key needed.
+async function fetchEconomicIndicators(){
+  const [gdp,cpi]=await Promise.all([
+    fetchJson("https://api.worldbank.org/v2/country/IDN/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=10"),
+    fetchJson("https://api.worldbank.org/v2/country/IDN/indicator/FP.CPI.TOTL.ZG?format=json&per_page=10"),
+  ]);
+  const latestGdp=((gdp&&gdp[1])||[]).find(d=>d.value!=null);
+  const latestCpi=((cpi&&cpi[1])||[]).find(d=>d.value!=null);
+  return {
+    gdpGrowth: latestGdp?latestGdp.value:null, gdpYear: latestGdp?latestGdp.date:null,
+    inflation: latestCpi?latestCpi.value:null, inflationYear: latestCpi?latestCpi.date:null,
+  };
+}
+
+// BMKG: Indonesia's official recent significant earthquakes feed (nationwide, no key).
+// Filtered client-side to quakes within ~300km (feed has no lat/lon filter of its own).
+async function fetchBMKGQuakes(lat,lon){
+  const d=await fetchJson("https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json");
+  const list=(d&&d.Infogempa&&d.Infogempa.gempa)||[];
+  return list.map(g=>{
+    const parts=(g.Coordinates||"0,0").split(",").map(parseFloat);
+    const dist=haversine(lat,lon,parts[0],parts[1]);
+    return {mag:parseFloat(g.Magnitude),place:g.Wilayah,date:g.Tanggal,jam:g.Jam,dist};
+  }).filter(q=>!isNaN(q.mag)&&!isNaN(q.dist));
+}
+
+// NASA FIRMS: active fire hotspots (VIIRS, last 3 days) in a ~30km box around the point.
+async function fetchFireHotspots(lat,lon){
+  if(!FIRMS_MAP_KEY) return {configured:false,count:null};
+  const d2=0.15;
+  const bbox=`${lon-d2},${lat-d2},${lon+d2},${lat+d2}`;
+  const url=`https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/${bbox}/3`;
+  const text=await fetchText(url,{},15000);
+  const lines=text.trim().split("\n").filter(Boolean);
+  if(lines[0] && lines[0].toLowerCase().indexOf("invalid")>=0) throw new Error("MAP_KEY tidak valid");
+  return {configured:true, count: lines.slice(1).length};
+}
+
 /* ================= geocoding ================= */
 let selectedLoc=null;
 const SAMPLES=["Kelapa Gading, Jakarta Utara","Semarang Utara","Dago, Bandung","Pluit, Jakarta Utara","Denpasar Selatan"];
@@ -290,6 +349,9 @@ const STEPS=[
   ["rain","Climate Engine · curah hujan 30 hari + prakiraan"],
   ["flood","Flood Engine · debit sungai GloFAS"],
   ["quake","Seismic Engine · USGS 10 tahun"],
+  ["bmkg","Seismic Engine · BMKG (Indonesia)"],
+  ["econ","Economic Engine · World Bank (PDB & inflasi)"],
+  ["fire","Fire Hotspot Engine · NASA FIRMS"],
   ["osm","Geo & Market Engine · Overpass/OSM"],
 ];
 function renderSteps(){
@@ -300,7 +362,7 @@ renderSteps();
 function setStep(id,state,extra){
   const el=$("st-"+id);
   el.className="step "+state;
-  el.querySelector(".dot").textContent = state==="done"?"✓": state==="fail"?"!":"";
+  el.querySelector(".dot").textContent = state==="done"?"✓": state==="fail"?"!": state==="skip"?"–":"";
   if(extra) el.querySelector("span:last-child").textContent=extra;
 }
 
@@ -319,7 +381,9 @@ async function runAnalysis(){
   $("placeholder").innerHTML="Menarik data real dari internet...";
 
   const R={elev:null,rain30:null,rainMax:null,rain7f:null,discharge:null,dischargeRatio:null,
-           quakes:[],waterwayM:null,shops:null,roads:null};
+           quakes:[],waterwayM:null,shops:null,roads:null,
+           bmkgQuakes:[],gdpGrowth:null,gdpYear:null,inflation:null,inflationYear:null,
+           fireCount:null,fireConfigured:false};
 
   /* Elevation */
   setStep("elev","loading");
@@ -364,6 +428,32 @@ async function runAnalysis(){
     R.quakes=(d.features||[]).map(f=>({mag:f.properties.mag,place:f.properties.place,time:f.properties.time}));
     setStep("quake","done",`Seismic Engine · ${R.quakes.length} gempa M≥5 dalam 150 km / 10 thn`);
   }catch(e){ setStep("quake","fail","Seismic Engine · gagal ("+e.message+")"); }
+
+  /* BMKG (Indonesia earthquake feed) */
+  setStep("bmkg","loading");
+  try{
+    const all=await fetchBMKGQuakes(lat,lon);
+    R.bmkgQuakes=all.filter(q=>q.dist<=300);
+    setStep("bmkg","done",`Seismic Engine (BMKG) · ${R.bmkgQuakes.length} gempa terkini dalam 300 km`);
+  }catch(e){ setStep("bmkg","fail","Seismic Engine (BMKG) · gagal (CORS/jaringan)"); }
+
+  /* World Bank: GDP growth + inflation */
+  setStep("econ","loading");
+  try{
+    const econ=await fetchEconomicIndicators();
+    R.gdpGrowth=econ.gdpGrowth; R.gdpYear=econ.gdpYear;
+    R.inflation=econ.inflation; R.inflationYear=econ.inflationYear;
+    setStep("econ","done",`Economic Engine · PDB ${econ.gdpGrowth!=null?econ.gdpGrowth.toFixed(1)+"%":"n/a"} (${econ.gdpYear}), inflasi ${econ.inflation!=null?econ.inflation.toFixed(1)+"%":"n/a"} (${econ.inflationYear})`);
+  }catch(e){ setStep("econ","fail","Economic Engine · gagal ("+e.message+")"); }
+
+  /* NASA FIRMS: active fire hotspots */
+  setStep("fire","loading");
+  try{
+    const fire=await fetchFireHotspots(lat,lon);
+    R.fireConfigured=fire.configured; R.fireCount=fire.count;
+    setStep("fire", fire.configured?"done":"skip",
+      fire.configured? `Fire Hotspot Engine · ${fire.count} titik api (3 hari, radius ~15km)` : "Fire Hotspot Engine · belum dikonfigurasi (perlu MAP_KEY gratis dari firms.modaps.eosdis.nasa.gov)");
+  }catch(e){ setStep("fire","fail","Fire Hotspot Engine · gagal ("+e.message+")"); }
 
   /* Overpass: waterways, roads, shops */
   setStep("osm","loading");
@@ -415,13 +505,21 @@ function computeAndRender(R){
   }
   climate=Math.max(5,Math.round(climate));
 
-  /* Seismic score */
+  /* Seismic score (USGS + BMKG combined) */
   let seismic=100;
-  const big=R.quakes.filter(q=>q.mag>=6).length, med=R.quakes.length;
-  if(big>=3){seismic-=40;reasons.push({s:"Seismic",t:`${big} gempa M≥6 tercatat USGS dalam 150 km / 10 tahun`,hi:1});}
-  else if(big>=1){seismic-=25;reasons.push({s:"Seismic",t:`${big} gempa M≥6 dalam 150 km (USGS): cek standar bangunan`,hi:0});}
+  const bigUsgs=R.quakes.filter(q=>q.mag>=6).length, med=R.quakes.length;
+  const bigBmkg=(R.bmkgQuakes||[]).filter(q=>q.mag>=6 && q.dist<=150).length;
+  const big=Math.max(bigUsgs,bigBmkg);
+  if(big>=3){seismic-=40;reasons.push({s:"Seismic",t:`${big} gempa M≥6 dalam 150 km / 10 tahun (USGS/BMKG)`,hi:1});}
+  else if(big>=1){seismic-=25;reasons.push({s:"Seismic",t:`${big} gempa M≥6 dalam 150 km (USGS/BMKG): cek standar bangunan`,hi:0});}
   if(med>=15) seismic-=15; else if(med>=6) seismic-=8;
   seismic=Math.max(5,Math.round(seismic));
+
+  /* Fire hotspots fold into Climate (relevant especially for lahan/perkebunan) */
+  if(R.fireConfigured && R.fireCount!=null){
+    if(R.fireCount>=5){climate=Math.max(5,climate-15);reasons.push({s:"Climate",t:`${R.fireCount} titik api terdeteksi NASA FIRMS dalam radius ~15km (3 hari terakhir)`,hi:1});}
+    else if(R.fireCount>=1){climate=Math.max(5,climate-6);}
+  }
 
   /* Geo/access score */
   let geo=70;
@@ -433,10 +531,22 @@ function computeAndRender(R){
   if(R.shops!=null){ if(R.shops>=60)market=90; else if(R.shops>=25)market=82; else if(R.shops>=8)market=72; else {market=58;reasons.push({s:"Market",t:`Hanya ${R.shops} titik komersial dalam 1 km (OSM): likuiditas pasar lokal terbatas`,hi:0});} }
   market=Math.round(market);
 
+  /* Economic score: World Bank GDP growth + inflation (national indicator) */
+  let economic=100;
+  if(R.gdpGrowth!=null){
+    if(R.gdpGrowth<2){economic-=22;reasons.push({s:"Economic",t:`Pertumbuhan PDB Indonesia ${fmt(R.gdpGrowth)}% (${R.gdpYear}, World Bank): melambat`,hi:0});}
+    else if(R.gdpGrowth<4){economic-=10;}
+  }
+  if(R.inflation!=null){
+    if(R.inflation>6){economic-=22;reasons.push({s:"Economic",t:`Inflasi Indonesia ${fmt(R.inflation)}% (${R.inflationYear}, World Bank): di atas target BI`,hi:0});}
+    else if(R.inflation>4){economic-=10;}
+  }
+  economic=Math.max(15,Math.min(98,Math.round(economic)));
+
   if(legal<70) reasons.push({s:"Legal",t:"Dokumen belum SHM/SHGB: prioritaskan peningkatan hak & verifikasi BPN",hi:1});
 
-  const scores={Market:market,Legal:legal,Geo:geo,Climate:climate,Seismic:seismic};
-  const w={Market:.2,Legal:.2,Geo:.2,Climate:.25,Seismic:.15};
+  const scores={Market:market,Legal:legal,Geo:geo,Climate:climate,Seismic:seismic,Economic:economic};
+  const w={Market:.18,Legal:.18,Geo:.15,Climate:.22,Seismic:.12,Economic:.15};
   const health=Object.keys(scores).reduce((a,k)=>a+scores[k]*w[k],0);
   const cri=Math.max(2,Math.min(98,Math.round(100-health)));
 
@@ -453,7 +563,7 @@ function computeAndRender(R){
 }
 
 /* ================= render ================= */
-const COLORS={Market:"#0057A8",Legal:"#6B4EAE",Geo:"#AD7A1E",Climate:"#C13B57",Seismic:"#1B8A56"};
+const COLORS={Market:"#0057A8",Legal:"#6B4EAE",Geo:"#AD7A1E",Climate:"#C13B57",Seismic:"#1B8A56",Economic:"#2E86AB"};
 function polar(cx,cy,r,d){const a=d*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
 function arc(cx,cy,r,a1,a2,color,w){
   if(a2-a1<0.5)return"";
@@ -491,7 +601,10 @@ function renderResults(R,scores,cri,fin,reasons){
     ["Hujan 30 hari",R.rain30==null?"n/a":fmt(R.rain30)+" mm","aktual, Open-Meteo",R.rain30!=null&&R.rain30>400],
     ["Prakiraan 7 hari",R.rain7f==null?"n/a":fmt(R.rain7f)+" mm","Open-Meteo",R.rain7f!=null&&R.rain7f>150],
     ["Sungai terdekat",R.waterwayM==null?"> 500 m":fmt(R.waterwayM)+" m","Overpass/OSM",R.waterwayM!=null&&R.waterwayM<150],
-    ["Gempa M≥5 (10 thn)",R.quakes.length+" kejadian","USGS, radius 150 km",R.quakes.filter(q=>q.mag>=6).length>0],
+    ["Gempa M≥5 (10 thn)",R.quakes.length+" kejadian (USGS) / "+R.bmkgQuakes.length+" terkini (BMKG)","USGS + BMKG",R.quakes.filter(q=>q.mag>=6).length>0],
+    ["PDB Indonesia",R.gdpGrowth==null?"n/a":fmt(R.gdpGrowth)+"% ("+R.gdpYear+")","World Bank",R.gdpGrowth!=null&&R.gdpGrowth<2],
+    ["Inflasi Indonesia",R.inflation==null?"n/a":fmt(R.inflation)+"% ("+R.inflationYear+")","World Bank",R.inflation!=null&&R.inflation>6],
+    ["Titik api (3 hari)",!R.fireConfigured?"belum dikonfigurasi":R.fireCount+" titik","NASA FIRMS",R.fireConfigured&&R.fireCount>=5],
     ["Titik komersial",R.shops==null?"n/a":R.shops+" /1 km","Overpass/OSM",false],
     ["Jalan utama",R.roads==null?"n/a":R.roads+" ruas /600 m","Overpass/OSM",false],
   ];
@@ -499,7 +612,7 @@ function renderResults(R,scores,cri,fin,reasons){
     `<div class="fact ${warn?"warn":""}"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
 
   /* DNA ring */
-  const keys=Object.keys(COLORS),Rr=52,C=66,sw=10,gap=6,seg=(360-5*gap)/5;
+  const keys=Object.keys(COLORS),Rr=52,C=66,sw=9,gap=5,seg=(360-keys.length*gap)/keys.length;
   let deg=-90,svg="";
   keys.forEach(k=>{
     svg+=arc(C,C,Rr,deg,deg+seg,"#E9F1FA",sw);
@@ -513,7 +626,8 @@ function renderResults(R,scores,cri,fin,reasons){
   $("criBadge").innerHTML=`<span class="badge ${bc}">${bt}</span>`;
 
   const DESC={Market:"Densitas komersial 1 km (proxy likuiditas)",Legal:"Jenis sertifikat (input manual)",
-    Geo:"Akses jalan arteri/kolektor",Climate:"Elevasi + hujan aktual + debit sungai + jarak sungai",Seismic:"Gempa historis USGS"};
+    Geo:"Akses jalan arteri/kolektor",Climate:"Elevasi + hujan + sungai + titik api (FIRMS)",Seismic:"Gempa historis USGS + BMKG",
+    Economic:"PDB & inflasi Indonesia (World Bank)"};
   $("scoreBars").innerHTML=keys.map(k=>
     `<div class="mb"><div class="bt"><b>${k}</b><span>${scores[k]}/100 · ${DESC[k]}</span></div>
      <div class="bar"><i style="width:${scores[k]}%;background:${COLORS[k]}"></i></div></div>`).join("");
@@ -538,7 +652,15 @@ function renderResults(R,scores,cri,fin,reasons){
     $("quakeList").innerHTML=R.quakes.slice(0,8).map(q=>
       `<div><b>M${q.mag.toFixed(1)}</b> · ${q.place} · ${new Date(q.time).toLocaleDateString("id-ID")}</div>`).join("");
   } else {
-    $("quakeList").innerHTML="Tidak ada gempa M≥5 tercatat dalam radius 150 km selama 10 tahun terakhir.";
+    $("quakeList").innerHTML="Tidak ada gempa M≥5 (USGS) tercatat dalam radius 150 km selama 10 tahun terakhir.";
+  }
+  const bmkgSec=$("bmkgQuakeSection");
+  if(R.bmkgQuakes && R.bmkgQuakes.length){
+    bmkgSec.innerHTML=`<div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Gempa terkini BMKG (radius 300 km)</div>`+
+      R.bmkgQuakes.slice(0,6).map(q=>
+        `<div><b>M${q.mag.toFixed(1)}</b> · ${q.place} · ${q.date} ${q.jam||""} · ${fmt(q.dist)} km</div>`).join("");
+  } else {
+    bmkgSec.innerHTML="";
   }
 }
 </script>

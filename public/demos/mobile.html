@@ -221,6 +221,9 @@ body{font-family:var(--font);background:
     <div class="screen">
       <div class="statusbar"><span id="clock">09.41</span><span>▮▮▮ ᯤ 87%</span></div>
       <div class="appbar">
+        <a href="/" target="_top" aria-label="Kembali ke Beranda" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex-shrink:0;color:#fff;background:rgba(255,255,255,.14);border-radius:99px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
         <div class="logowrap"><img id="logoImg" alt="Logo BRI"></div>
         <span class="divider"></span>
         <div class="t"><b>COLARIS</b><span>DI DALAM BRISPOT</span></div>
@@ -712,13 +715,13 @@ async function addGeocode(){
 document.getElementById("addGeoBtn").addEventListener("click", addGeocode);
 document.getElementById("addAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") addGeocode(); });
 
-const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine", osm:"Geo & Market Engine"};
+const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", fire:"Fire Hotspot (FIRMS)", osm:"Geo & Market Engine"};
 function addRenderSteps(state){
   const box=document.getElementById("addSteps");
   document.getElementById("addStepsCard").style.display="block";
   box.innerHTML = Object.keys(ADD_STEP_LABELS).map(k=>{
     const s = state[k] || {state:"pending"};
-    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="loading"?"…":"○";
+    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="skip"?"–":s.state==="loading"?"…":"○";
     const color = s.state==="done"?"var(--ok)":s.state==="fail"?"var(--danger)":"var(--muted)";
     return `<div style="display:flex;gap:8px"><span style="color:${color};font-weight:bold;width:14px">${icon}</span><span>${s.note || ADD_STEP_LABELS[k]}</span></div>`;
   }).join("");

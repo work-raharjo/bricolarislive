@@ -164,6 +164,10 @@
 <body>
 
 <header>
+  <a href="/" target="_top" style="display:flex;align-items:center;gap:6px;color:#fff;text-decoration:none;font-size:11.5px;font-weight:bold;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:6px 11px 6px 9px;flex-shrink:0">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Beranda
+  </a>
   <div class="brand"><b>COLARIS</b><span>COLLATERAL RISK INTELLIGENCE</span></div>
   <div class="kpis">
     <div class="kpi"><div class="v" id="kpiAssets">–</div><div class="l">Agunan dipantau</div></div>
@@ -761,13 +765,13 @@ async function liveGeocode(){
 document.getElementById("liveGeoBtn").addEventListener("click", liveGeocode);
 document.getElementById("liveAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") liveGeocode(); });
 
-const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine", osm:"Geo & Market Engine"};
+const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", fire:"Fire Hotspot Engine (NASA FIRMS)", osm:"Geo & Market Engine"};
 function liveRenderSteps(state){
   const box=document.getElementById("liveSteps");
   box.innerHTML = Object.keys(LIVE_STEP_LABELS).map(k=>{
     const s = state[k] || {state:"pending"};
-    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="loading"?"…":"○";
-    const color = s.state==="done"?"#1E8E5A":s.state==="fail"?"#C0455C":"#6B7280";
+    const icon = s.state==="done"?"✓":s.state==="fail"?"!":s.state==="skip"?"–":s.state==="loading"?"…":"○";
+    const color = s.state==="done"?"#1E8E5A":s.state==="fail"?"#C0455C":"#9CA3AF";
     return `<div style="display:flex;gap:8px"><span style="color:${color};font-weight:bold;width:14px">${icon}</span><span>${s.note || LIVE_STEP_LABELS[k]}</span></div>`;
   }).join("");
 }

@@ -1,7 +1,13 @@
-/* ColarisLiveEngine: shared real-data fetch + scoring, used by Simulasi Desktop and Mobile Demo
-   to add a live-analyzed asset (address in) alongside the fictional demo portfolio. */
+/* ColarisLiveEngine: shared real-data fetch + scoring, used by Simulasi Desktop, Mobile Demo,
+   and the standalone Live Analysis tool to add a live-analyzed asset (address in) alongside
+   the fictional demo portfolio. */
 (function (global) {
   "use strict";
+
+  // Set your own free key from https://firms.modaps.eosdis.nasa.gov/api/area/ to enable the
+  // Fire Hotspot Engine (NASA FIRMS). Left empty by default: the engine reports "not configured"
+  // instead of failing, and every other engine keeps working normally.
+  const FIRMS_MAP_KEY = "";
 
   function haversine(lat1, lon1, lat2, lon2) {
     const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
@@ -15,6 +21,15 @@
     const t = setTimeout(() => ctl.abort(), timeoutMs);
     return fetch(url, Object.assign({}, opts, { signal: ctl.signal }))
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .finally(() => clearTimeout(t));
+  }
+
+  function fetchText(url, opts, timeoutMs) {
+    timeoutMs = timeoutMs || 20000;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    return fetch(url, Object.assign({}, opts, { signal: ctl.signal }))
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .finally(() => clearTimeout(t));
   }
 
@@ -51,12 +66,57 @@
     }));
   }
 
+  // World Bank Open Data: national GDP growth + inflation for Indonesia. No API key needed.
+  async function fetchEconomicIndicators() {
+    const [gdp, cpi] = await Promise.all([
+      fetchJson("https://api.worldbank.org/v2/country/IDN/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=10"),
+      fetchJson("https://api.worldbank.org/v2/country/IDN/indicator/FP.CPI.TOTL.ZG?format=json&per_page=10"),
+    ]);
+    const latestGdp = ((gdp && gdp[1]) || []).find(d => d.value != null);
+    const latestCpi = ((cpi && cpi[1]) || []).find(d => d.value != null);
+    return {
+      gdpGrowth: latestGdp ? latestGdp.value : null,
+      gdpYear: latestGdp ? latestGdp.date : null,
+      inflation: latestCpi ? latestCpi.value : null,
+      inflationYear: latestCpi ? latestCpi.date : null,
+    };
+  }
+
+  // BMKG: Indonesia's official recent significant earthquakes feed (nationwide, no key).
+  // Filtered client-side to quakes within ~300km of the asset (feed itself has no lat/lon filter).
+  async function fetchBMKGQuakes(lat, lon) {
+    const d = await fetchJson("https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json");
+    const list = (d && d.Infogempa && d.Infogempa.gempa) || [];
+    return list.map(g => {
+      const parts = (g.Coordinates || "0,0").split(",").map(parseFloat);
+      const dist = haversine(lat, lon, parts[0], parts[1]);
+      return { mag: parseFloat(g.Magnitude), place: g.Wilayah, date: g.Tanggal, jam: g.Jam,
+               depth: g.Kedalaman, dist, felt: g.Dirasakan || "-" };
+    }).filter(q => !isNaN(q.mag) && !isNaN(q.dist));
+  }
+
+  // NASA FIRMS: active fire hotspots (VIIRS, last 3 days) in a ~30km box around the point.
+  // Requires a free MAP_KEY (see constant above); reports "not configured" otherwise.
+  async function fetchFireHotspots(lat, lon) {
+    if (!FIRMS_MAP_KEY) return { configured: false, count: null };
+    const d2 = 0.15; // ~15-17km at Indonesia's latitude
+    const bbox = `${lon - d2},${lat - d2},${lon + d2},${lat + d2}`;
+    const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/${bbox}/3`;
+    const text = await fetchText(url, {}, 15000);
+    const lines = text.trim().split("\n").filter(Boolean);
+    const rows = lines.slice(1); // drop CSV header
+    if (lines[0] && lines[0].toLowerCase().indexOf("invalid") >= 0) throw new Error("MAP_KEY tidak valid");
+    return { configured: true, count: rows.length };
+  }
+
   // Pulls all live signals for a coordinate. Never throws: each engine fails independently,
   // onStep(key, state, note) reports progress for UI, R fields stay null on failure.
   async function fetchLiveSignals(lat, lon, onStep) {
     const step = (k, s, n) => { if (onStep) try { onStep(k, s, n); } catch (e) {} };
     const R = { elev: null, rain30: null, rain7f: null, discharge: null, dischargeRatio: null,
-                quakes: [], waterwayM: null, roads: null, shops: null };
+                quakes: [], waterwayM: null, roads: null, shops: null,
+                gdpGrowth: null, gdpYear: null, inflation: null, inflationYear: null,
+                bmkgQuakes: [], fireCount: null, fireConfigured: false };
 
     step("elev", "loading");
     try {
@@ -92,8 +152,31 @@
       const start = new Date(); start.setFullYear(start.getFullYear() - 10);
       const d = await fetchJson(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=150&starttime=${start.toISOString().slice(0,10)}&minmagnitude=5&orderby=magnitude&limit=50`);
       R.quakes = (d.features || []).map(f => ({ mag: f.properties.mag, place: f.properties.place, time: f.properties.time }));
-      step("quake", "done", `${R.quakes.length} gempa M>=5 / 10 thn`);
-    } catch (e) { step("quake", "fail", "Seismic Engine gagal"); }
+      step("quake", "done", `${R.quakes.length} gempa M>=5 / 10 thn (USGS)`);
+    } catch (e) { step("quake", "fail", "Seismic Engine (USGS) gagal"); }
+
+    step("bmkg", "loading");
+    try {
+      const all = await fetchBMKGQuakes(lat, lon);
+      R.bmkgQuakes = all.filter(q => q.dist <= 300);
+      step("bmkg", "done", `${R.bmkgQuakes.length} gempa terkini BMKG dalam 300 km`);
+    } catch (e) { step("bmkg", "fail", "BMKG Engine gagal (CORS/jaringan)"); }
+
+    step("econ", "loading");
+    try {
+      const econ = await fetchEconomicIndicators();
+      R.gdpGrowth = econ.gdpGrowth; R.gdpYear = econ.gdpYear;
+      R.inflation = econ.inflation; R.inflationYear = econ.inflationYear;
+      step("econ", "done", `PDB ${econ.gdpGrowth!=null?econ.gdpGrowth.toFixed(1)+"%":"n/a"} (${econ.gdpYear}), inflasi ${econ.inflation!=null?econ.inflation.toFixed(1)+"%":"n/a"} (${econ.inflationYear})`);
+    } catch (e) { step("econ", "fail", "Economic Engine (World Bank) gagal"); }
+
+    step("fire", "loading");
+    try {
+      const fire = await fetchFireHotspots(lat, lon);
+      R.fireConfigured = fire.configured; R.fireCount = fire.count;
+      step("fire", fire.configured ? "done" : "skip",
+        fire.configured ? `${fire.count} titik api NASA FIRMS (3 hari, radius ~15km)` : "Fire Hotspot Engine: MAP_KEY belum dikonfigurasi");
+    } catch (e) { step("fire", "fail", "Fire Hotspot Engine gagal: " + e.message); }
 
     step("osm", "loading");
     try {
@@ -115,8 +198,23 @@
   }
 
   // Maps raw signals to the 5-dimension schema used by the desktop/mobile demos
-  // (Market / Legal / Geo / Climate / Economic). Climate folds in both flood and seismic
-  // risk, matching how those demos already describe Climate as "risiko lingkungan & bencana".
+  // (Market / Legal / Geo / Climate / Economic). Climate folds in flood, seismic (USGS + BMKG
+  // combined) and fire-hotspot risk; Economic is now computed from World Bank GDP growth and
+  // inflation instead of a fixed neutral value.
+  function scoreEconomic(gdpGrowth, inflation) {
+    let s = 100;
+    const notes = [];
+    if (gdpGrowth != null) {
+      if (gdpGrowth < 2) { s -= 22; notes.push(`Pertumbuhan PDB Indonesia ${gdpGrowth.toFixed(1)}% (melambat)`); }
+      else if (gdpGrowth < 4) { s -= 10; }
+    }
+    if (inflation != null) {
+      if (inflation > 6) { s -= 22; notes.push(`Inflasi Indonesia ${inflation.toFixed(1)}% (di atas target BI)`); }
+      else if (inflation > 4) { s -= 10; }
+    }
+    return { score: Math.max(15, Math.min(98, Math.round(s))), notes };
+  }
+
   function scoreFromSignals(R, legalScore) {
     const reasons = [];
     let climate = 100;
@@ -134,10 +232,16 @@
       if (R.waterwayM < 150) { climate -= 12; reasons.push(`Sungai/kanal ${R.waterwayM.toFixed(0)} m dari lokasi`); }
       else if (R.waterwayM < 400) climate -= 6;
     }
-    const bigQ = R.quakes.filter(q => q.mag >= 6).length;
-    if (bigQ >= 3) { climate -= 22; reasons.push(`${bigQ} gempa M>=6 tercatat USGS dalam 150 km/10 thn`); }
-    else if (bigQ >= 1) { climate -= 13; reasons.push(`${bigQ} gempa M>=6 dalam 150 km (USGS)`); }
+    const bigQ_usgs = R.quakes.filter(q => q.mag >= 6).length;
+    const bigQ_bmkg = (R.bmkgQuakes || []).filter(q => q.mag >= 6 && q.dist <= 150).length;
+    const bigQ = Math.max(bigQ_usgs, bigQ_bmkg);
+    if (bigQ >= 3) { climate -= 22; reasons.push(`${bigQ} gempa M>=6 dalam 150 km/10 thn (USGS/BMKG)`); }
+    else if (bigQ >= 1) { climate -= 13; reasons.push(`${bigQ} gempa M>=6 dalam 150 km (USGS/BMKG)`); }
     else if (R.quakes.length >= 12) climate -= 6;
+    if (R.fireConfigured && R.fireCount != null) {
+      if (R.fireCount >= 5) { climate -= 12; reasons.push(`${R.fireCount} titik api terdeteksi NASA FIRMS dalam radius ~15km (3 hari terakhir)`); }
+      else if (R.fireCount >= 1) climate -= 5;
+    }
     climate = Math.max(5, Math.round(climate));
 
     let geo = 70;
@@ -153,15 +257,24 @@
       else { market = 58; reasons.push(`Hanya ${R.shops} titik komersial dalam 1 km (OSM)`); }
     }
 
+    const econ = scoreEconomic(R.gdpGrowth, R.inflation);
+    econ.notes.forEach(n => reasons.push(n));
+
     const floodProne = (R.elev != null && R.elev < 10) || (R.waterwayM != null && R.waterwayM < 400) || (R.dischargeRatio != null && R.dischargeRatio > 0.5);
 
+    const gdpTxt = R.gdpGrowth != null ? `${R.gdpGrowth.toFixed(1)}% (${R.gdpYear}, World Bank)` : "data tidak tersedia";
+    const inflTxt = R.inflation != null ? `${R.inflation.toFixed(1)}% (${R.inflationYear}, World Bank)` : "data tidak tersedia";
+
     return {
-      scores: { Market: Math.round(market), Legal: legalScore, Geo: Math.round(geo), Climate: climate, Economic: 70 },
+      scores: { Market: Math.round(market), Legal: legalScore, Geo: Math.round(geo), Climate: climate, Economic: econ.score },
       floodProne,
       reasons,
-      economicNote: "Economic Intelligence: 70 (estimasi netral, data makroekonomi lokal real-time belum tersedia via API publik).",
+      economicNote: `Economic Intelligence: ${econ.score}, dihitung dari pertumbuhan PDB Indonesia ${gdpTxt} dan inflasi ${inflTxt}. Indikator nasional, bukan hyperlocal.`,
     };
   }
 
-  global.ColarisLiveEngine = { geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchOverpass };
+  global.ColarisLiveEngine = {
+    geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchText,
+    fetchOverpass, fetchEconomicIndicators, fetchBMKGQuakes, fetchFireHotspots,
+  };
 })(window);

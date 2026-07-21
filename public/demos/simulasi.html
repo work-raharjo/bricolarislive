@@ -603,6 +603,8 @@ function renderBars(m){
 /* ================= Prescriptive ================= */
 function renderRecs(a,m){
   const recs=[];
+  if(a.fusionSummary) recs.push({hi:false,t:"Intelligence Fusion (LLM): ringkasan media kawasan",
+    w:a.fusionSummary});
   if(m.cri>=50) recs.push({hi:true,t:"Masukkan aset ke watchlist & lakukan appraisal ulang dalam 30 hari",
     w:`Reason code: CRI ${m.cri} melewati ambang 50 (skor Climate ${m.s.Climate}, Market ${m.s.Market}).`});
   if(m.ltv>75) recs.push({hi:true,t:"Tinjau ulang LTV & pertimbangkan agunan tambahan",
@@ -770,7 +772,7 @@ async function liveGeocode(){
 document.getElementById("liveGeoBtn").addEventListener("click", liveGeocode);
 document.getElementById("liveAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") liveGeocode(); });
 
-const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", media:"Media Intelligence (GDELT)", fire:"Fire Hotspot Engine (NASA FIRMS)", agri:"Agro Climatology (NASA POWER)", osm:"Geo & Market Engine"};
+const LIVE_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality Engine", quake:"Seismic Engine (USGS)", bmkg:"Seismic Engine (BMKG)", econ:"Economic Engine (World Bank)", media:"Media Intelligence (GDELT)", fusion:"Intelligence Fusion (LLM)", fire:"Fire Hotspot Engine (NASA FIRMS)", agri:"Agro Climatology (NASA POWER)", osm:"Geo & Market Engine"};
 function liveRenderSteps(state){
   const box=document.getElementById("liveSteps");
   box.innerHTML = Object.keys(LIVE_STEP_LABELS).map(k=>{
@@ -808,6 +810,7 @@ document.getElementById("liveRunBtn").addEventListener("click", async ()=>{
       plafon, npw0:nilai, liq, scores:scored.scores,
       floodProne:scored.floodProne, notes: scored.reasons[0] || "Data real-time, tanpa catatan risiko signifikan",
       live:true, liveReasons:scored.reasons, economicNote:scored.economicNote,
+      fusionSummary: R.fusionSummary || null,
     };
     ASSETS.push(newAsset);
 

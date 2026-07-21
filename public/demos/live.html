@@ -205,7 +205,8 @@ footer{max-width:1240px;margin:0 auto;padding:0 22px 30px;font-size:11px;color:v
     </div>
 
     <div class="card" style="margin-top:14px" id="mediaCard">
-      <h3>Media Intelligence (GDELT, 30 hari terakhir)</h3>
+      <h3>Media Intelligence (GDELT) &amp; Intelligence Fusion (LLM)</h3>
+      <div id="fusionBox" style="display:none;background:var(--ice);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:var(--ink);line-height:1.55"></div>
       <div class="quakelist" id="mediaList"></div>
     </div>
   </div>
@@ -393,6 +394,24 @@ async function fetchMediaSentiment(placeName){
   };
 }
 
+// Intelligence Fusion Engine: the LLM layer from the original proposal ("Intelligence Fusion
+// memanfaatkan Large Language Model untuk memahami berita, regulasi, dan informasi tidak
+// terstruktur"), distinct from Media Intelligence (GDELT) which only gathers structured
+// article counts/tone. Calls a same-origin API route so the LLM API key never touches
+// client code.
+async function fetchIntelligenceFusion(placeName,articles){
+  try{
+    const res=await fetchJson("/api/summarize",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({placeName, articles: articles||[]}),
+    },20000);
+    return {configured:true, summary:res.summary||null};
+  }catch(e){
+    if(String(e.message||"").indexOf("HTTP 501")>=0) return {configured:false, summary:null};
+    throw e;
+  }
+}
+
 /* ================= geocoding ================= */
 let selectedLoc=null;
 const SAMPLES=["Kelapa Gading, Jakarta Utara","Semarang Utara","Dago, Bandung","Pluit, Jakarta Utara","Denpasar Selatan"];
@@ -437,6 +456,7 @@ const STEPS=[
   ["bmkg","Seismic Engine · BMKG (Indonesia)"],
   ["econ","Economic Engine · World Bank (PDB & inflasi)"],
   ["media","Media Intelligence Engine · GDELT"],
+  ["fusion","Intelligence Fusion Engine · LLM"],
   ["fire","Fire Hotspot Engine · NASA FIRMS"],
   ["agri","Agro Climatology Engine · NASA POWER"],
   ["osm","Geo & Market Engine · Overpass/OSM"],
@@ -474,7 +494,8 @@ async function runAnalysis(){
            pm25:null,pm10:null,aqi:null,
            solarRad:null,agroTemp:null,humidity:null,wind:null,
            schools:null,healthcare:null,transit:null,powerInfra:null,
-           mediaArticles:null,mediaTone:null,mediaTop:[]};
+           mediaArticles:null,mediaTone:null,mediaTop:[],
+           fusionConfigured:null,fusionSummary:null};
 
   /* Elevation */
   setStep("elev","loading");
@@ -556,6 +577,16 @@ async function runAnalysis(){
       ? `Media Intelligence · tidak ada artikel untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
       : `Media Intelligence · ${media.articleCount!=null?media.articleCount:"?"} artikel, tone rata-rata ${media.avgTone!=null?media.avgTone.toFixed(2):"n/a"} (GDELT, 30 hari)${partialNote}`);
   }catch(e){ setStep("media","fail","Media Intelligence Engine · gagal ("+e.message+")"); }
+
+  /* Intelligence Fusion: LLM summary of the gathered articles */
+  setStep("fusion","loading");
+  try{
+    const placeName2=selectedLoc.name.split(",")[0].trim();
+    const fusion=await fetchIntelligenceFusion(placeName2, R.mediaTop);
+    R.fusionConfigured=fusion.configured; R.fusionSummary=fusion.summary;
+    setStep("fusion", fusion.configured?"done":"skip",
+      fusion.configured?"Intelligence Fusion · ringkasan LLM tersedia":"Intelligence Fusion Engine · LLM belum dikonfigurasi");
+  }catch(e){ setStep("fusion","fail","Intelligence Fusion Engine · gagal ("+e.message+")"); }
 
   /* NASA FIRMS: active fire hotspots */
   setStep("fire","loading");
@@ -831,6 +862,23 @@ function renderResults(R,scores,cri,fin,reasons){
     }
   } else {
     $("mediaCard").classList.add("hidden");
+  }
+
+  /* intelligence fusion (LLM summary) */
+  const fusionBox=$("fusionBox");
+  if(R.fusionConfigured===true && R.fusionSummary){
+    fusionBox.style.display="block";
+    fusionBox.style.borderLeftColor="var(--blue)";
+    fusionBox.innerHTML=`<b style="color:var(--navy)">Ringkasan LLM:</b> ${R.fusionSummary}`;
+  } else if(R.fusionConfigured===false){
+    fusionBox.style.display="block";
+    fusionBox.style.borderLeftColor="var(--muted-2)";
+    fusionBox.innerHTML=`<span style="color:var(--muted-2)">Intelligence Fusion Engine (LLM) belum dikonfigurasi.</span>`;
+  } else {
+    // R.fusionConfigured is null: the call genuinely failed (network/server error), not just
+    // "unconfigured". The step list above already shows the real reason; no need to duplicate
+    // a misleading "not configured" message here.
+    fusionBox.style.display="none";
   }
 }
 </script>

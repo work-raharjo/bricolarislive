@@ -71,6 +71,13 @@ const SOURCES = [
     key: "Tidak perlu",
   },
   {
+    engine: "Intelligence Fusion Engine",
+    provider: "LLM via SumoPod (OpenAI-compatible gateway)",
+    url: "https://ai.sumopod.com",
+    data: "Ringkasan naratif 1-2 kalimat dari judul-judul artikel yang dikumpulkan Media Intelligence Engine, dibuat LLM yang benar-benar membaca judulnya, bukan sekadar skor angka.",
+    key: "Sudah dikonfigurasi (server-side)",
+  },
+  {
     engine: "Economic Engine",
     provider: "World Bank Open Data",
     url: "https://data.worldbank.org",
@@ -149,8 +156,10 @@ export default function DocsPage() {
         <p style={{ fontSize: 14, lineHeight: 1.7, color: "#3A4553", maxWidth: 720 }}>
           BRI COLARIS berbeda dari kebanyakan demo AI karena tidak memakai dummy data
           yang sudah disiapkan sebelumnya. Setiap kali analisis dijalankan, aplikasi menarik
-          data nyata dari sejumlah sumber publik saat itu juga, langsung dari browser pengguna,
-          tanpa server backend dan tanpa database.
+          data nyata dari sejumlah sumber publik saat itu juga, hampir seluruhnya langsung
+          dari browser pengguna tanpa database. Dua pengecualian kecil (GDELT dan LLM untuk
+          Intelligence Fusion) lewat route server tipis, dijelaskan di bagian "Kenapa Ada
+          Backend Route?" di bawah.
         </p>
 
         <Section title="Alur Kerja Aplikasi">
@@ -160,7 +169,7 @@ export default function DocsPage() {
               koordinat lintang/bujur lewat OpenStreetMap Nominatim.
             </li>
             <li>
-              <b style={{ color: NAVY }}>Fan-out ke 11 engine</b> secara paralel/berurutan, masing-masing
+              <b style={{ color: NAVY }}>Fan-out ke 12 engine</b> secara paralel/berurutan, masing-masing
               memanggil satu API publik dengan koordinat tersebut sebagai parameter.
             </li>
             <li>
@@ -206,7 +215,7 @@ export default function DocsPage() {
                         style={{
                           fontSize: 10.5,
                           fontWeight: "bold",
-                          color: s.key !== "Tidak perlu" && s.key !== "Sudah dikonfigurasi" ? ORANGE : "#1B8A56",
+                          color: s.key === "Tidak perlu" || s.key.startsWith("Sudah") ? "#1B8A56" : ORANGE,
                         }}
                       >
                         {s.key}
@@ -217,6 +226,34 @@ export default function DocsPage() {
               </tbody>
             </table>
           </div>
+        </Section>
+
+        <Section title="Kenapa Ada Backend Route?">
+          <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "#3A4553", marginBottom: 12 }}>
+            Hampir seluruh aplikasi ini jalan murni di browser, tanpa server. Ada dua
+            pengecualian kecil, keduanya karena alasan teknis yang sama: CORS.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, lineHeight: 1.7, color: "#3A4553" }}>
+            <div>
+              <b style={{ color: NAVY }}>/api/gdelt</b>: GDELT tidak konsisten mengirim header
+              CORS untuk request langsung dari browser, yang muncul sebagai error generik
+              "Load failed". Karena CORS murni pembatasan browser (tidak berlaku antar
+              server), route ini memanggil GDELT dari server Vercel lalu meneruskan
+              hasilnya lewat domain sendiri.
+            </div>
+            <div>
+              <b style={{ color: NAVY }}>/api/summarize</b>: memanggil LLM untuk Intelligence
+              Fusion Engine. API key LLM harus disimpan di server (environment variable),
+              tidak pernah dikirim ke kode client, supaya tidak bisa dilihat siapa pun lewat
+              "view source".
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: MUTED, marginTop: 12, lineHeight: 1.6 }}>
+            Kalau salah satu route ini tidak tersedia (misalnya file <code>live.html</code> ini
+            di-download dan dibuka langsung tanpa server di baliknya), engine terkait otomatis
+            jatuh ke mekanisme cadangan atau menampilkan status "belum dikonfigurasi", tanpa
+            menghentikan analisis lainnya.
+          </p>
         </Section>
 
         <Section title="Cara Menghitung Recovery Probability">
@@ -391,6 +428,14 @@ export default function DocsPage() {
               </a>
               . Cakupan tetap sebatas radius ~15 km dan 3 hari terakhir, paling relevan untuk
               agunan berupa lahan/perkebunan.
+            </li>
+            <li>
+              <b style={{ color: NAVY }}>Intelligence Fusion Engine</b> membaca dan meringkas
+              maksimal 8 judul artikel dari Media Intelligence Engine (GDELT) lewat LLM,
+              dijalankan di server (bukan browser) supaya API key tidak pernah terekspos.
+              Ringkasannya dibatasi pada apa yang tersirat di judul saja, bukan pembacaan
+              artikel penuh, karena GDELT hanya menyediakan judul dan metadata, bukan isi
+              artikel lengkap.
             </li>
             <li>
               <b style={{ color: NAVY }}>Overpass API</b> (OpenStreetMap) adalah layanan publik gratis

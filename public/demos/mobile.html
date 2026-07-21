@@ -556,6 +556,7 @@ function openDetail(id){
     `<div class="mb"><div class="bt"><b>${k}</b><span>${m.s[k]}/100</span></div>
      <div class="bar"><i style="width:${m.s[k]}%;background:${COLORS[k]}"></i></div></div>`).join("");
   const recs=[];
+  if(a.fusionSummary)recs.push({hi:0,t:"Intelligence Fusion (LLM): ringkasan media",w:a.fusionSummary});
   if(m.cri>=50)recs.push({hi:1,t:"Masukkan ke watchlist & appraisal ulang 30 hari",w:`CRI ${m.cri} > ambang 50`});
   if(m.ltv>75)recs.push({hi:1,t:"Tinjau LTV & pertimbangkan agunan tambahan",w:`LTV ${pct(m.ltv)} > 75%`});
   if(m.s.Climate<55)recs.push({hi:0,t:"Verifikasi kondisi via citra satelit resolusi tinggi",w:`Skor Climate ${m.s.Climate}`});
@@ -720,7 +721,7 @@ async function addGeocode(){
 document.getElementById("addGeoBtn").addEventListener("click", addGeocode);
 document.getElementById("addAddr").addEventListener("keydown", e=>{ if(e.key==="Enter") addGeocode(); });
 
-const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", media:"Media (GDELT)", fire:"Fire Hotspot (FIRMS)", agri:"Agro Climatology (POWER)", osm:"Geo & Market Engine"};
+const ADD_STEP_LABELS = {elev:"Elevation Engine", rain:"Climate Engine", flood:"Flood Engine", air:"Air Quality", quake:"Seismic (USGS)", bmkg:"Seismic (BMKG)", econ:"Economic (World Bank)", media:"Media (GDELT)", fusion:"Intelligence Fusion (LLM)", fire:"Fire Hotspot (FIRMS)", agri:"Agro Climatology (POWER)", osm:"Geo & Market Engine"};
 function addRenderSteps(state){
   const box=document.getElementById("addSteps");
   document.getElementById("addStepsCard").style.display="block";
@@ -757,7 +758,7 @@ document.getElementById("addRunBtn").addEventListener("click", async ()=>{
       loc: addSelectedLoc.full.split(",").slice(1,3).join(",").trim(),
       plafon, npw0:nilai, liq, scores:scored.scores,
       floodProne:scored.floodProne, notes: scored.reasons[0] || "Data real-time, tanpa catatan risiko signifikan",
-      live:true,
+      live:true, fusionSummary: R.fusionSummary || null,
     };
     ASSETS.push(newAsset);
 

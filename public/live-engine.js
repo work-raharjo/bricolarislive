@@ -183,6 +183,26 @@
     };
   }
 
+  // Intelligence Fusion Engine: the LLM layer from the original proposal ("Intelligence
+  // Fusion memanfaatkan Large Language Model untuk memahami berita, regulasi, dan informasi
+  // tidak terstruktur"), distinct from Media Intelligence (GDELT) which only gathers
+  // structured article counts/tone. Calls a same-origin API route so the LLM API key never
+  // touches client code. Reports "not configured" (not "fail") if the route says the key
+  // is missing, matching the pattern used for NASA FIRMS.
+  async function fetchIntelligenceFusion(placeName, articles) {
+    try {
+      const res = await fetchJson("/api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeName, articles: articles || [] }),
+      }, 20000);
+      return { configured: true, summary: res.summary || null };
+    } catch (e) {
+      if (String(e.message || "").indexOf("HTTP 501") >= 0) return { configured: false, summary: null };
+      throw e;
+    }
+  }
+
   // NASA FIRMS: active fire hotspots (VIIRS, last 3 days) in a ~30km box around the point.
   // Requires a free MAP_KEY (see constant above); reports "not configured" otherwise.
   async function fetchFireHotspots(lat, lon) {
@@ -208,7 +228,8 @@
                 pm25: null, pm10: null, aqi: null,
                 solarRad: null, agroTemp: null, humidity: null, wind: null,
                 schools: null, healthcare: null, transit: null, powerInfra: null,
-                mediaArticles: null, mediaTone: null, mediaTop: [] };
+                mediaArticles: null, mediaTone: null, mediaTop: [],
+                fusionConfigured: null, fusionSummary: null };
 
     step("elev", "loading");
     try {
@@ -279,6 +300,15 @@
         ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
         : `${media.articleCount != null ? media.articleCount : "?"} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)${partialNote}`);
     } catch (e) { step("media", "fail", "Media Intelligence Engine (GDELT) gagal: " + e.message); }
+
+    step("fusion", "loading");
+    try {
+      if (!placeName) throw new Error("nama lokasi tidak tersedia");
+      const fusion = await fetchIntelligenceFusion(placeName, R.mediaTop);
+      R.fusionConfigured = fusion.configured; R.fusionSummary = fusion.summary;
+      step("fusion", fusion.configured ? "done" : "skip",
+        fusion.configured ? "Ringkasan LLM tersedia" : "Intelligence Fusion Engine: LLM belum dikonfigurasi");
+    } catch (e) { step("fusion", "fail", "Intelligence Fusion Engine gagal: " + e.message); }
 
     step("fire", "loading");
     try {
@@ -417,6 +447,6 @@
   global.ColarisLiveEngine = {
     geocodeSearch, fetchLiveSignals, scoreFromSignals, haversine, fetchJson, fetchText,
     fetchOverpass, fetchEconomicIndicators, fetchBMKGQuakes, fetchFireHotspots,
-    fetchAirQuality, fetchAgroClimatology, fetchMediaSentiment,
+    fetchAirQuality, fetchAgroClimatology, fetchMediaSentiment, fetchIntelligenceFusion,
   };
 })(window);

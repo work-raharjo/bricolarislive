@@ -20,9 +20,24 @@
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), timeoutMs);
     return fetch(url, Object.assign({}, opts, { signal: ctl.signal }))
-      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(async r => {
+        if (!r.ok) {
+          let detail = "HTTP " + r.status;
+          try {
+            const body = await r.clone().json();
+            if (body && body.error) detail = body.error;
+          } catch (e) {
+            try { const text = await r.text(); if (text) detail = "HTTP " + r.status + ": " + text.slice(0, 200); } catch (e2) {}
+          }
+          const err = new Error(detail);
+          err.status = r.status;
+          throw err;
+        }
+        return r.json();
+      })
       .finally(() => clearTimeout(t));
   }
+
 
   function fetchText(url, opts, timeoutMs) {
     timeoutMs = timeoutMs || 20000;
@@ -125,13 +140,20 @@
   async function fetchGdeltEndpoint(mode, params) {
     const qs = new URLSearchParams(Object.assign({ mode }, params)).toString();
     // 1) same-origin API route (works when deployed on Next.js/Vercel)
+    let apiRouteErr = null;
     try {
       return await fetchJson("/api/gdelt?" + qs, {}, 15000);
-    } catch (e) {}
+    } catch (e) { apiRouteErr = e; }
     // 2) direct + public CORS proxy fallback (best effort for standalone file usage)
     const gdeltUrl = "https://api.gdeltproject.org/api/v2/doc/doc?" +
       new URLSearchParams(Object.assign({ format: "json" }, params, { mode })).toString();
-    return await fetchViaCorsProxy(gdeltUrl, 15000);
+    try {
+      return await fetchViaCorsProxy(gdeltUrl, 15000);
+    } catch (proxyErr) {
+      // Both the API route and every proxy failed: report the API route's reason, since that's
+      // the path that should normally work when deployed and is most useful for diagnosis.
+      throw new Error(`/api/gdelt: ${apiRouteErr.message} | proxy chain: ${proxyErr.message}`);
+    }
   }
   const CORS_PROXIES = [
     (url) => url, // direct (works fine from some networks/browsers)
@@ -160,7 +182,9 @@
     ]);
 
     if (artResult.status === "rejected" && toneResult.status === "rejected") {
-      throw new Error("GDELT tidak dapat diakses (CORS/jaringan)");
+      const r1 = artResult.reason && artResult.reason.message ? artResult.reason.message : String(artResult.reason);
+      const r2 = toneResult.reason && toneResult.reason.message ? toneResult.reason.message : String(toneResult.reason);
+      throw new Error(r1 === r2 ? r1 : `artlist: ${r1} | tone: ${r2}`);
     }
 
     const artData = artResult.status === "fulfilled" ? artResult.value : null;
@@ -198,7 +222,7 @@
       }, 20000);
       return { configured: true, summary: res.summary || null };
     } catch (e) {
-      if (String(e.message || "").indexOf("HTTP 501") >= 0) return { configured: false, summary: null };
+      if (e.status === 501) return { configured: false, summary: null };
       throw e;
     }
   }

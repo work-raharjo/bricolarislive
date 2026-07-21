@@ -237,8 +237,17 @@ function haversine(lat1,lon1,lat2,lon2){
 function fetchJson(url, opts={}, timeoutMs=20000){
   const ctl=new AbortController();
   const t=setTimeout(()=>ctl.abort(), timeoutMs);
-  return fetch(url,{...opts,signal:ctl.signal}).then(r=>{
-    if(!r.ok) throw new Error("HTTP "+r.status);
+  return fetch(url,{...opts,signal:ctl.signal}).then(async r=>{
+    if(!r.ok){
+      let detail="HTTP "+r.status;
+      try{
+        const body=await r.clone().json();
+        if(body && body.error) detail=body.error;
+      }catch(e){
+        try{ const text=await r.text(); if(text) detail="HTTP "+r.status+": "+text.slice(0,200); }catch(e2){}
+      }
+      const err=new Error(detail); err.status=r.status; throw err;
+    }
     return r.json();
   }).finally(()=>clearTimeout(t));
 }
@@ -339,10 +348,15 @@ async function fetchAgroClimatology(lat,lon){
 // that route won't exist, so we fall back to a public CORS proxy chain as best effort.
 async function fetchGdeltEndpoint(mode,params){
   const qs=new URLSearchParams(Object.assign({mode},params)).toString();
-  try{ return await fetchJson("/api/gdelt?"+qs,{},15000); }catch(e){}
+  let apiRouteErr=null;
+  try{ return await fetchJson("/api/gdelt?"+qs,{},15000); }catch(e){ apiRouteErr=e; }
   const gdeltUrl="https://api.gdeltproject.org/api/v2/doc/doc?"+
     new URLSearchParams(Object.assign({format:"json"},params,{mode})).toString();
-  return await fetchViaCorsProxy(gdeltUrl,15000);
+  try{
+    return await fetchViaCorsProxy(gdeltUrl,15000);
+  }catch(proxyErr){
+    throw new Error(`/api/gdelt: ${apiRouteErr.message} | proxy chain: ${proxyErr.message}`);
+  }
 }
 const CORS_PROXIES=[
   (url)=>url,
@@ -371,7 +385,9 @@ async function fetchMediaSentiment(placeName){
   ]);
 
   if(artResult.status==="rejected" && toneResult.status==="rejected"){
-    throw new Error("GDELT tidak dapat diakses (CORS/jaringan)");
+    const r1=artResult.reason&&artResult.reason.message?artResult.reason.message:String(artResult.reason);
+    const r2=toneResult.reason&&toneResult.reason.message?toneResult.reason.message:String(toneResult.reason);
+    throw new Error(r1===r2?r1:`artlist: ${r1} | tone: ${r2}`);
   }
 
   const artData=artResult.status==="fulfilled"?artResult.value:null;
@@ -407,7 +423,7 @@ async function fetchIntelligenceFusion(placeName,articles){
     },20000);
     return {configured:true, summary:res.summary||null};
   }catch(e){
-    if(String(e.message||"").indexOf("HTTP 501")>=0) return {configured:false, summary:null};
+    if(e.status===501) return {configured:false, summary:null};
     throw e;
   }
 }

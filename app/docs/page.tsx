@@ -68,14 +68,14 @@ const SOURCES = [
     provider: "GDELT Project",
     url: "https://www.gdeltproject.org",
     data: "Jumlah artikel berita dan skor tone/sentimen linguistik rata-rata untuk nama lokasi dalam 30 hari terakhir.",
-    key: "Tidak perlu",
+    key: "Under construction",
   },
   {
     engine: "Intelligence Fusion Engine",
     provider: "LLM via SumoPod (OpenAI-compatible gateway)",
     url: "https://ai.sumopod.com",
     data: "Ringkasan naratif 1-2 kalimat dari judul-judul artikel yang dikumpulkan Media Intelligence Engine, dibuat LLM yang benar-benar membaca judulnya, bukan sekadar skor angka.",
-    key: "Sudah dikonfigurasi (server-side)",
+    key: "Under construction",
   },
   {
     engine: "Economic Engine",
@@ -157,9 +157,7 @@ export default function DocsPage() {
           BRI COLARIS berbeda dari kebanyakan demo AI karena tidak memakai dummy data
           yang sudah disiapkan sebelumnya. Setiap kali analisis dijalankan, aplikasi menarik
           data nyata dari sejumlah sumber publik saat itu juga, hampir seluruhnya langsung
-          dari browser pengguna tanpa database. Dua pengecualian kecil (GDELT dan LLM untuk
-          Intelligence Fusion) lewat route server tipis, dijelaskan di bagian "Kenapa Ada
-          Backend Route?" di bawah.
+          dari browser pengguna tanpa database.
         </p>
 
         <Section title="Alur Kerja Aplikasi">
@@ -430,12 +428,10 @@ export default function DocsPage() {
               agunan berupa lahan/perkebunan.
             </li>
             <li>
-              <b style={{ color: NAVY }}>Intelligence Fusion Engine</b> membaca dan meringkas
-              maksimal 8 judul artikel dari Media Intelligence Engine (GDELT) lewat LLM,
-              dijalankan di server (bukan browser) supaya API key tidak pernah terekspos.
-              Ringkasannya dibatasi pada apa yang tersirat di judul saja, bukan pembacaan
-              artikel penuh, karena GDELT hanya menyediakan judul dan metadata, bukan isi
-              artikel lengkap.
+              <b style={{ color: NAVY }}>Media Intelligence Engine (GDELT)</b> dan{" "}
+              <b style={{ color: NAVY }}>Intelligence Fusion Engine (LLM)</b> untuk sementara
+              berstatus under construction sambil masalah konektivitasnya diselesaikan.
+              Skor Market untuk sementara tidak menyertakan sinyal sentimen media.
             </li>
             <li>
               <b style={{ color: NAVY }}>Overpass API</b> (OpenStreetMap) adalah layanan publik gratis

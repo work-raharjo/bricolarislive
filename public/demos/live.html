@@ -278,6 +278,12 @@ async function fetchOverpass(query, onAttempt){
 // keeps working normally.
 const FIRMS_MAP_KEY = "5bae915cb040c14f14fb39e30486981f";
 
+// Media Intelligence (GDELT) and Intelligence Fusion (LLM) are temporarily disabled while
+// their production connectivity issues are being worked out. Flip these back to true once
+// resolved; every other engine is unaffected either way.
+const MEDIA_ENGINE_ENABLED = false;
+const FUSION_ENGINE_ENABLED = false;
+
 function fetchText(url, opts={}, timeoutMs=20000){
   const ctl=new AbortController();
   const t=setTimeout(()=>ctl.abort(), timeoutMs);
@@ -584,25 +590,33 @@ async function runAnalysis(){
 
   /* GDELT: media sentiment for the place name */
   setStep("media","loading");
-  try{
-    const placeName=selectedLoc.name.split(",")[0].trim();
-    const media=await fetchMediaSentiment(placeName);
-    R.mediaArticles=media.articleCount; R.mediaTone=media.avgTone; R.mediaTop=media.topArticles;
-    const partialNote = media.partial ? " (sebagian data)" : "";
-    setStep("media","done", media.articleCount===0
-      ? `Media Intelligence · tidak ada artikel untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
-      : `Media Intelligence · ${media.articleCount!=null?media.articleCount:"?"} artikel, tone rata-rata ${media.avgTone!=null?media.avgTone.toFixed(2):"n/a"} (GDELT, 30 hari)${partialNote}`);
-  }catch(e){ setStep("media","fail","Media Intelligence Engine · gagal ("+e.message+")"); }
+  if(!MEDIA_ENGINE_ENABLED){
+    setStep("media","skip","Media Intelligence Engine: under construction");
+  } else {
+    try{
+      const placeName=selectedLoc.name.split(",")[0].trim();
+      const media=await fetchMediaSentiment(placeName);
+      R.mediaArticles=media.articleCount; R.mediaTone=media.avgTone; R.mediaTop=media.topArticles;
+      const partialNote = media.partial ? " (sebagian data)" : "";
+      setStep("media","done", media.articleCount===0
+        ? `Media Intelligence · tidak ada artikel untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
+        : `Media Intelligence · ${media.articleCount!=null?media.articleCount:"?"} artikel, tone rata-rata ${media.avgTone!=null?media.avgTone.toFixed(2):"n/a"} (GDELT, 30 hari)${partialNote}`);
+    }catch(e){ setStep("media","fail","Media Intelligence Engine · gagal ("+e.message+")"); }
+  }
 
   /* Intelligence Fusion: LLM summary of the gathered articles */
   setStep("fusion","loading");
-  try{
-    const placeName2=selectedLoc.name.split(",")[0].trim();
-    const fusion=await fetchIntelligenceFusion(placeName2, R.mediaTop);
-    R.fusionConfigured=fusion.configured; R.fusionSummary=fusion.summary;
-    setStep("fusion", fusion.configured?"done":"skip",
-      fusion.configured?"Intelligence Fusion · ringkasan LLM tersedia":"Intelligence Fusion Engine · LLM belum dikonfigurasi");
-  }catch(e){ setStep("fusion","fail","Intelligence Fusion Engine · gagal ("+e.message+")"); }
+  if(!FUSION_ENGINE_ENABLED){
+    setStep("fusion","skip","Intelligence Fusion Engine: under construction");
+  } else {
+    try{
+      const placeName2=selectedLoc.name.split(",")[0].trim();
+      const fusion=await fetchIntelligenceFusion(placeName2, R.mediaTop);
+      R.fusionConfigured=fusion.configured; R.fusionSummary=fusion.summary;
+      setStep("fusion", fusion.configured?"done":"skip",
+        fusion.configured?"Intelligence Fusion · ringkasan LLM tersedia":"Intelligence Fusion Engine · LLM belum dikonfigurasi");
+    }catch(e){ setStep("fusion","fail","Intelligence Fusion Engine · gagal ("+e.message+")"); }
+  }
 
   /* NASA FIRMS: active fire hotspots */
   setStep("fire","loading");

@@ -9,6 +9,12 @@
   // instead of failing, and every other engine keeps working normally.
   const FIRMS_MAP_KEY = "5bae915cb040c14f14fb39e30486981f";
 
+  // Media Intelligence (GDELT) and Intelligence Fusion (LLM) are temporarily disabled
+  // while their production connectivity issues are being worked out. Flip these back to
+  // true once resolved; every other engine is unaffected either way.
+  const MEDIA_ENGINE_ENABLED = false;
+  const FUSION_ENGINE_ENABLED = false;
+
   function haversine(lat1, lon1, lat2, lon2) {
     const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
@@ -315,24 +321,32 @@
     } catch (e) { step("econ", "fail", "Economic Engine (World Bank) gagal"); }
 
     step("media", "loading");
-    try {
-      if (!placeName) throw new Error("nama lokasi tidak tersedia");
-      const media = await fetchMediaSentiment(placeName);
-      R.mediaArticles = media.articleCount; R.mediaTone = media.avgTone; R.mediaTop = media.topArticles;
-      const partialNote = media.partial ? " (sebagian data)" : "";
-      step("media", "done", media.articleCount === 0
-        ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
-        : `${media.articleCount != null ? media.articleCount : "?"} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)${partialNote}`);
-    } catch (e) { step("media", "fail", "Media Intelligence Engine (GDELT) gagal: " + e.message); }
+    if (!MEDIA_ENGINE_ENABLED) {
+      step("media", "skip", "Media Intelligence Engine: under construction");
+    } else {
+      try {
+        if (!placeName) throw new Error("nama lokasi tidak tersedia");
+        const media = await fetchMediaSentiment(placeName);
+        R.mediaArticles = media.articleCount; R.mediaTone = media.avgTone; R.mediaTop = media.topArticles;
+        const partialNote = media.partial ? " (sebagian data)" : "";
+        step("media", "done", media.articleCount === 0
+          ? `Tidak ada artikel ditemukan untuk "${placeName}" dalam 30 hari (GDELT)${partialNote}`
+          : `${media.articleCount != null ? media.articleCount : "?"} artikel, tone rata-rata ${media.avgTone != null ? media.avgTone.toFixed(2) : "n/a"} (GDELT, 30 hari)${partialNote}`);
+      } catch (e) { step("media", "fail", "Media Intelligence Engine (GDELT) gagal: " + e.message); }
+    }
 
     step("fusion", "loading");
-    try {
-      if (!placeName) throw new Error("nama lokasi tidak tersedia");
-      const fusion = await fetchIntelligenceFusion(placeName, R.mediaTop);
-      R.fusionConfigured = fusion.configured; R.fusionSummary = fusion.summary;
-      step("fusion", fusion.configured ? "done" : "skip",
-        fusion.configured ? "Ringkasan LLM tersedia" : "Intelligence Fusion Engine: LLM belum dikonfigurasi");
-    } catch (e) { step("fusion", "fail", "Intelligence Fusion Engine gagal: " + e.message); }
+    if (!FUSION_ENGINE_ENABLED) {
+      step("fusion", "skip", "Intelligence Fusion Engine: under construction");
+    } else {
+      try {
+        if (!placeName) throw new Error("nama lokasi tidak tersedia");
+        const fusion = await fetchIntelligenceFusion(placeName, R.mediaTop);
+        R.fusionConfigured = fusion.configured; R.fusionSummary = fusion.summary;
+        step("fusion", fusion.configured ? "done" : "skip",
+          fusion.configured ? "Ringkasan LLM tersedia" : "Intelligence Fusion Engine: LLM belum dikonfigurasi");
+      } catch (e) { step("fusion", "fail", "Intelligence Fusion Engine gagal: " + e.message); }
+    }
 
     step("fire", "loading");
     try {
